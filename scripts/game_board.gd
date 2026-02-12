@@ -95,6 +95,8 @@ func _clear_board() -> void:
 	for child in tower_container.get_children():
 		child.queue_free()
 	for child in number_container.get_children():
+		if child.has_method("advance"):
+			child.dead = true  # Stop _process logic immediately
 		child.queue_free()
 	for child in effects_container.get_children():
 		child.queue_free()
