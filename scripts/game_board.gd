@@ -5,6 +5,7 @@ signal tower_placed(tower: Node2D)
 signal number_solved(value: int)
 signal number_escaped(value: int)
 signal level_complete(stars: int)
+signal edit_dirty_changed(dirty: bool)
 
 const COLS: int = 10
 const ROWS: int = 20
@@ -30,6 +31,10 @@ var numbers: Array = []  # active NumberEntity nodes
 var occupied_cells: Dictionary = {}  # Vector2i -> NumberEntity (cell reservation)
 var level_finished: bool = false
 var game_paused: bool = false
+var edit_mode: bool = false
+var _edit_placing: String = ""  # "", "start", or "end"
+var _edit_dirty: bool = false  # true if grid changed since last save
+var _edit_saved_layout: PackedStringArray = []  # layout at last save
 
 # References (set by main)
 var health_manager: HealthManager
@@ -365,6 +370,11 @@ func _in_bounds(cell: Vector2i) -> bool:
 # ─── Input ───────────────────────────────────────────────────────
 
 func _input(event: InputEvent) -> void:
+	if edit_mode:
+		if event is InputEventScreenTouch and event.pressed:
+			_handle_edit_touch(event.position)
+			get_viewport().set_input_as_handled()
+		return
 	# Don't consume input when paused or level is over
 	if game_paused or level_finished or (health_manager and health_manager.current_hp <= 0):
 		return
@@ -387,6 +397,102 @@ func _handle_touch(screen_pos: Vector2) -> void:
 			_try_upgrade_tower(cell)
 		_:
 			pass  # start, end — do nothing
+
+# ─── Edit Mode ───────────────────────────────────────────────────
+
+func _handle_edit_touch(screen_pos: Vector2) -> void:
+	var cell := local_to_grid(screen_pos)
+	if not _in_bounds(cell):
+		return
+
+	# If placing start or end, set it on this cell
+	if _edit_placing == "start":
+		_edit_move_marker(cell, CellType.START)
+		_edit_placing = ""
+		return
+	if _edit_placing == "end":
+		_edit_move_marker(cell, CellType.END)
+		_edit_placing = ""
+		return
+
+	var cell_type = grid[cell.x][cell.y]
+	match cell_type:
+		CellType.PATH:
+			_edit_set_cell(cell, CellType.WALL)
+		CellType.WALL:
+			_edit_set_cell(cell, CellType.PATH)
+		CellType.START:
+			_edit_placing = "start"
+		CellType.END:
+			_edit_placing = "end"
+		CellType.TOWER:
+			_edit_set_cell(cell, CellType.PATH)
+
+func _edit_set_cell(cell: Vector2i, new_type: int) -> void:
+	var old_type = grid[cell.x][cell.y]
+	grid[cell.x][cell.y] = new_type
+	# Rebuild A* and check path still exists
+	_setup_astar()
+	var test_path = astar.get_id_path(start_cell, end_cell)
+	if test_path.is_empty():
+		# Revert — would break path
+		grid[cell.x][cell.y] = old_type
+		_setup_astar()
+		return
+	# Remove tower if converting tower cell
+	if old_type == CellType.TOWER and towers.has(cell):
+		var tower_node = towers[cell]
+		tower_node.queue_free()
+		towers.erase(cell)
+	_check_edit_dirty()
+	queue_redraw()
+
+func _edit_move_marker(cell: Vector2i, marker_type: int) -> void:
+	# Clear old marker position
+	if marker_type == CellType.START:
+		grid[start_cell.x][start_cell.y] = CellType.PATH
+		start_cell = cell
+	elif marker_type == CellType.END:
+		grid[end_cell.x][end_cell.y] = CellType.PATH
+		end_cell = cell
+	grid[cell.x][cell.y] = marker_type
+	_setup_astar()
+	_check_edit_dirty()
+	queue_redraw()
+
+func _check_edit_dirty() -> void:
+	var was_dirty := _edit_dirty
+	_edit_dirty = get_grid_layout() != _edit_saved_layout
+	if _edit_dirty != was_dirty:
+		edit_dirty_changed.emit(_edit_dirty)
+
+func mark_edit_saved() -> void:
+	_edit_saved_layout = get_grid_layout()
+	var was_dirty := _edit_dirty
+	_edit_dirty = false
+	if was_dirty:
+		edit_dirty_changed.emit(false)
+
+func get_grid_layout() -> PackedStringArray:
+	var layout := PackedStringArray()
+	for y in ROWS:
+		var row: String = ""
+		for x in COLS:
+			match grid[x][y]:
+				CellType.WALL:
+					row += "#"
+				CellType.START:
+					row += "S"
+				CellType.END:
+					row += "E"
+				CellType.TOWER:
+					row += "."  # towers export as path
+				_:
+					row += "."
+		layout.append(row)
+	return layout
+
+# ─── Tower Placement ─────────────────────────────────────────────
 
 func _try_place_tower(cell: Vector2i) -> void:
 	if not can_place_tower(cell):

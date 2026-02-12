@@ -7,6 +7,9 @@ signal restart_pressed
 signal level_select_pressed
 signal fast_forward_toggled(enabled: bool)
 signal settings_changed
+signal edit_level_pressed
+signal edit_save_pressed
+signal edit_done_pressed
 
 var caveat_font: Font
 var caveat_bold: Font
@@ -194,8 +197,8 @@ func _create_pause_popup() -> void:
 
 	# Tilted paper container
 	pause_paper = Control.new()
-	pause_paper.size = Vector2(220, 340)
-	pause_paper.position = Vector2(85, 230)
+	pause_paper.size = Vector2(220, 390)
+	pause_paper.position = Vector2(85, 210)
 	pause_paper.pivot_offset = Vector2(110, 170)
 	pause_paper.rotation = deg_to_rad(-3.5)
 	pause_paper.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -203,14 +206,14 @@ func _create_pause_popup() -> void:
 
 	# Paper background (off-white with shadow)
 	var shadow := ColorRect.new()
-	shadow.size = Vector2(220, 340)
+	shadow.size = Vector2(220, 390)
 	shadow.position = Vector2(4, 4)
 	shadow.color = Color(0.0, 0.0, 0.0, 0.15)
 	shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pause_paper.add_child(shadow)
 
 	var paper_bg := ColorRect.new()
-	paper_bg.size = Vector2(220, 340)
+	paper_bg.size = Vector2(220, 390)
 	paper_bg.color = Color(0.98, 0.96, 0.90, 1.0)
 	paper_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pause_paper.add_child(paper_bg)
@@ -275,8 +278,19 @@ func _create_pause_popup() -> void:
 	levels_btn.pressed.connect(_on_level_select_pressed)
 	pause_paper.add_child(levels_btn)
 
+	# Edit Level button (debug only)
+	if OS.is_debug_build():
+		var edit_btn := Button.new()
+		edit_btn.text = "Edit Level"
+		edit_btn.flat = true
+		edit_btn.size = Vector2(160, 44)
+		edit_btn.position = Vector2(30, 236)
+		_style_paper_button(edit_btn)
+		edit_btn.pressed.connect(_on_edit_level_pressed)
+		pause_paper.add_child(edit_btn)
+
 	# ── Toggle row: Music / Sound / Vibrate ──
-	var toggle_y: float = 252.0
+	var toggle_y: float = 300.0
 	var toggle_w: float = 58.0
 	var toggle_h: float = 34.0
 	var toggle_gap: float = 6.0
@@ -302,6 +316,7 @@ func _style_paper_button(btn: Button) -> void:
 	btn.add_theme_color_override("font_color", Color("#444444"))
 	btn.add_theme_color_override("font_hover_color", Color("#222222"))
 	btn.add_theme_color_override("font_pressed_color", Color("#222222"))
+	btn.add_theme_color_override("font_focus_color", Color("#444444"))
 	btn.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	# Underline style
 	var hover_style := StyleBoxFlat.new()
@@ -437,6 +452,13 @@ func _on_level_select_pressed() -> void:
 	pause_button.visible = true
 	ff_button.visible = true
 	level_select_pressed.emit()
+
+func _on_edit_level_pressed() -> void:
+	is_paused = false
+	pause_overlay.visible = false
+	pause_button.visible = false
+	ff_button.visible = false
+	edit_level_pressed.emit()
 
 func update_health(current: int, _max_hp: int) -> void:
 	health_label.text = str(current)
@@ -650,3 +672,73 @@ func show_music_name(display_name: String) -> void:
 	music_name_tween.tween_property(music_name_label, "modulate:a", 1.0, 0.8).set_ease(Tween.EASE_OUT)
 	music_name_tween.tween_interval(4.0)
 	music_name_tween.tween_property(music_name_label, "modulate:a", 0.0, 1.2).set_ease(Tween.EASE_IN)
+
+# ─── Edit Mode Overlay ──────────────────────────────────────────
+
+var edit_bar: Control
+var _edit_save_btn: Button
+
+func _create_edit_bar() -> void:
+	edit_bar = Control.new()
+	edit_bar.visible = false
+	add_child(edit_bar)
+
+	var bg := ColorRect.new()
+	bg.offset_left = 0.0
+	bg.offset_top = 0.0
+	bg.offset_right = 390.0
+	bg.offset_bottom = 50.0
+	bg.color = Color(0.95, 0.93, 0.85, 0.95)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	edit_bar.add_child(bg)
+
+	var lbl := Label.new()
+	lbl.text = "EDIT MODE"
+	lbl.offset_left = 12.0
+	lbl.offset_top = 8.0
+	lbl.offset_right = 160.0
+	lbl.offset_bottom = 42.0
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_apply_font(lbl, 20, Color("#CC4444"))
+	if pencil_material:
+		lbl.material = pencil_material
+	edit_bar.add_child(lbl)
+
+	_edit_save_btn = Button.new()
+	_edit_save_btn.text = "Save"
+	_edit_save_btn.flat = true
+	_edit_save_btn.size = Vector2(70, 36)
+	_edit_save_btn.position = Vector2(220, 7)
+	_style_paper_button(_edit_save_btn)
+	_edit_save_btn.pressed.connect(func(): edit_save_pressed.emit())
+	edit_bar.add_child(_edit_save_btn)
+
+	var done_btn := Button.new()
+	done_btn.text = "Done"
+	done_btn.flat = true
+	done_btn.size = Vector2(70, 36)
+	done_btn.position = Vector2(305, 7)
+	_style_paper_button(done_btn)
+	done_btn.pressed.connect(func(): edit_done_pressed.emit())
+	edit_bar.add_child(done_btn)
+
+func update_edit_save_enabled(dirty: bool) -> void:
+	if _edit_save_btn:
+		_edit_save_btn.disabled = not dirty
+		if dirty:
+			_edit_save_btn.modulate = Color(1, 1, 1, 1)
+		else:
+			_edit_save_btn.modulate = Color(1, 1, 1, 0.4)
+
+func show_edit_mode() -> void:
+	if not edit_bar:
+		_create_edit_bar()
+	edit_bar.visible = true
+	update_edit_save_enabled(false)
+
+func hide_edit_mode() -> void:
+	if edit_bar:
+		edit_bar.visible = false
+	pause_button.visible = true
+	ff_button.visible = true

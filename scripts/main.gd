@@ -36,6 +36,7 @@ func _ready() -> void:
 	game_board.level_complete.connect(_on_level_complete)
 	game_board.number_escaped.connect(_on_number_escaped)
 	game_board.number_solved.connect(_on_number_solved)
+	game_board.edit_dirty_changed.connect(_on_edit_dirty_changed)
 
 	# HUD signals
 	hud.retry_button.pressed.connect(_on_retry)
@@ -46,6 +47,9 @@ func _ready() -> void:
 	hud.level_select_pressed.connect(_on_show_level_select)
 	hud.fast_forward_toggled.connect(_on_fast_forward)
 	hud.settings_changed.connect(save_settings)
+	hud.edit_level_pressed.connect(_on_edit_level)
+	hud.edit_save_pressed.connect(_on_edit_save)
+	hud.edit_done_pressed.connect(_on_edit_done)
 
 	# Create level select screen
 	level_select = LevelSelect.new()
@@ -175,6 +179,40 @@ func _on_retry() -> void:
 			_load_level(_create_level(0), 0)
 	audio_manager.play_gameplay_music()
 
+# ─── Edit Mode ───────────────────────────────────────────────────
+
+func _on_edit_level() -> void:
+	tick_engine.stop()
+	game_board.edit_mode = true
+	game_board.game_paused = false
+	game_board._edit_saved_layout = game_board.get_grid_layout()
+	game_board._edit_dirty = false
+	hud.show_edit_mode()
+
+func _on_edit_save() -> void:
+	if current_level_index < 0:
+		return
+	var data := LevelData.new()
+	data.grid_layout = game_board.get_grid_layout()
+	data.starting_hp = current_level.starting_hp
+	data.tick_speed = current_level.tick_speed
+	data.ticks_between_spawns = current_level.ticks_between_spawns
+	data.number_sequence = current_level.number_sequence
+	data.tutorial_hints = current_level.tutorial_hints
+	_save_level_file(current_level_index, data)
+	game_board.mark_edit_saved()
+
+func _on_edit_dirty_changed(dirty: bool) -> void:
+	hud.update_edit_save_enabled(dirty)
+
+func _on_edit_done() -> void:
+	game_board.edit_mode = false
+	game_board._edit_placing = ""
+	hud.hide_edit_mode()
+	# Reload the level (picks up saved file if any)
+	_load_level(_create_level(current_level_index), current_level_index)
+	audio_manager.play_gameplay_music()
+
 # ─── Level Select ────────────────────────────────────────────────
 
 func _on_show_level_select() -> void:
@@ -206,7 +244,12 @@ func _on_level_selected(level_index: int) -> void:
 const TOTAL_LEVELS: int = 60
 
 func _create_level(level_index: int) -> LevelData:
-	# Check for hand-designed levels first (tutorials)
+	# Priority: saved level file > hand-designed > procedural
+	var from_file := _load_level_file(level_index)
+	if from_file:
+		randomize()
+		return from_file
+
 	var hand_designed := _get_hand_designed_level(level_index)
 	if hand_designed:
 		randomize()
@@ -423,6 +466,62 @@ func _load_progress() -> void:
 				audio_manager.sfx_enabled = bool(s["sfx"])
 			if s.has("vibration"):
 				audio_manager.vibration_enabled = bool(s["vibration"])
+
+# ─── Level File Save/Load ─────────────────────────────────────────
+
+const LEVELS_DIR: String = "res://levels/"
+
+func _save_level_file(level_index: int, data: LevelData) -> void:
+	DirAccess.make_dir_recursive_absolute(LEVELS_DIR)
+	var path: String = LEVELS_DIR + "level_%02d.json" % level_index
+	var dict := {
+		"grid_layout": Array(data.grid_layout),
+		"starting_hp": data.starting_hp,
+		"tick_speed": data.tick_speed,
+		"ticks_between_spawns": data.ticks_between_spawns,
+		"number_sequence": data.number_sequence,
+		"tutorial_hints": data.tutorial_hints,
+	}
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	if file:
+		file.store_string(JSON.stringify(dict, "\t"))
+		file.close()
+
+func _load_level_file(level_index: int) -> LevelData:
+	var path: String = LEVELS_DIR + "level_%02d.json" % level_index
+	if not FileAccess.file_exists(path):
+		return null
+	var file := FileAccess.open(path, FileAccess.READ)
+	if not file:
+		return null
+	var text: String = file.get_as_text()
+	file.close()
+	var json := JSON.new()
+	if json.parse(text) != OK:
+		return null
+	var d = json.data
+	if not (d is Dictionary):
+		return null
+	var data := LevelData.new()
+	data.level_name = "Level " + str(level_index + 1)
+	if d.has("grid_layout"):
+		var layout := PackedStringArray()
+		for row in d["grid_layout"]:
+			layout.append(str(row))
+		data.grid_layout = layout
+	if d.has("starting_hp"):
+		data.starting_hp = int(d["starting_hp"])
+	if d.has("tick_speed"):
+		data.tick_speed = float(d["tick_speed"])
+	if d.has("ticks_between_spawns"):
+		data.ticks_between_spawns = int(d["ticks_between_spawns"])
+	if d.has("number_sequence"):
+		data.number_sequence = []
+		for n in d["number_sequence"]:
+			data.number_sequence.append(int(n))
+	if d.has("tutorial_hints"):
+		data.tutorial_hints = d["tutorial_hints"]
+	return data
 
 # ─── Hand-designed Levels (Tutorials) ─────────────────────────────
 
