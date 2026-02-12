@@ -30,6 +30,11 @@ func take_damage(amount: int) -> void:
 	if current_hp <= 0:
 		game_over.emit()
 
+func heal(amount: int) -> void:
+	"""Gain HP from successful divisions."""
+	current_hp += amount
+	health_changed.emit(current_hp, max_hp)
+
 func get_stars() -> int:
 	var ratio := float(current_hp) / float(max_hp)
 	if ratio > 0.66:

@@ -7,6 +7,16 @@ extends Node2D
 @onready var hud: HUD = $HUD
 
 var current_level: LevelData
+var current_level_index: int = -1  # -1 = no level loaded
+var level_stars: Dictionary = {}  # level_index -> stars (0-3)
+
+# Level select (created in code)
+var level_select: LevelSelect
+
+# Audio
+var audio_manager: AudioManager
+
+# ─── Lifecycle ───────────────────────────────────────────────────
 
 func _ready() -> void:
 	# Wire up references
@@ -24,14 +34,36 @@ func _ready() -> void:
 	game_board.number_escaped.connect(_on_number_escaped)
 	game_board.number_solved.connect(_on_number_solved)
 
-	# HUD
+	# HUD signals
 	hud.retry_button.pressed.connect(_on_retry)
+	hud.levels_button.pressed.connect(_on_show_level_select)
+	hud.pause_pressed.connect(_on_pause)
+	hud.resume_pressed.connect(_on_resume)
+	hud.restart_pressed.connect(_on_restart)
+	hud.level_select_pressed.connect(_on_show_level_select)
+	hud.fast_forward_toggled.connect(_on_fast_forward)
 
-	# Load random level
-	_load_level(_create_random_level())
+	# Create level select screen
+	level_select = LevelSelect.new()
+	level_select.level_selected.connect(_on_level_selected)
+	add_child(level_select)
 
-func _load_level(data: LevelData) -> void:
+	# Audio manager
+	audio_manager = AudioManager.new()
+	audio_manager.music_changed.connect(_on_music_changed)
+	add_child(audio_manager)
+
+	# Pass audio manager to game board for SFX
+	game_board.audio_manager = audio_manager
+
+	# Start on level select
+	_show_level_select()
+
+# ─── Level Loading ───────────────────────────────────────────────
+
+func _load_level(data: LevelData, level_index: int) -> void:
 	current_level = data
+	current_level_index = level_index
 	health_manager.setup(data.starting_hp)
 	game_board.load_level(data)
 	spawn_manager.setup(data.number_sequence, data.ticks_between_spawns)
@@ -39,9 +71,11 @@ func _load_level(data: LevelData) -> void:
 	hud.hide_game_over()
 	hud.set_scroll_speed(data.ticks_between_spawns, data.tick_speed)
 	tick_engine.start()
+	game_board.game_paused = false
+
+# ─── Tick / Spawn ────────────────────────────────────────────────
 
 func _on_tick() -> void:
-	# Advance numbers first (frees cells), then spawn new ones
 	game_board.on_tick()
 	spawn_manager.on_tick()
 
@@ -55,53 +89,155 @@ func _on_queue_updated(visible: Array[int]) -> void:
 func _on_health_changed(current: int, max_hp: int) -> void:
 	hud.update_health(current, max_hp)
 
+# ─── Game End ────────────────────────────────────────────────────
+
 func _on_game_over() -> void:
 	tick_engine.stop()
 	hud.show_game_over(0, false)
+	audio_manager.play_game_over()
 
 func _on_level_complete(stars: int) -> void:
 	tick_engine.stop()
+	# Save best stars for this level
+	if current_level_index >= 0:
+		var prev: int = level_stars.get(current_level_index, 0)
+		if stars > prev:
+			level_stars[current_level_index] = stars
 	hud.show_game_over(stars, true)
+	audio_manager.play_level_complete()
 
 func _on_number_escaped(value: int) -> void:
-	pass  # damage handled by number_entity -> health_manager
+	audio_manager.play_escaped()
 
 func _on_number_solved(_value: int) -> void:
-	pass  # could track stats
+	audio_manager.play_solved()
+
+func _on_music_changed(display_name: String) -> void:
+	hud.show_music_name(display_name)
+
+# ─── Pause ───────────────────────────────────────────────────────
+
+func _on_pause() -> void:
+	tick_engine.pause()
+	game_board.game_paused = true
+
+func _on_resume() -> void:
+	tick_engine.resume()
+	game_board.game_paused = false
+
+func _on_fast_forward(enabled: bool) -> void:
+	if enabled:
+		Engine.time_scale = 2.0
+	else:
+		Engine.time_scale = 1.0
+
+func _on_restart() -> void:
+	Engine.time_scale = 1.0
+	if current_level_index >= 0:
+		_load_level(_create_level(current_level_index), current_level_index)
+
+# ─── Retry (from game over panel) ───────────────────────────────
 
 func _on_retry() -> void:
-	_load_level(_create_random_level())
+	Engine.time_scale = 1.0
+	if current_level_index >= 0:
+		_load_level(_create_level(current_level_index), current_level_index)
+	else:
+		_load_level(_create_level(0), 0)
 
-# ─── Random Level ────────────────────────────────────────────────
+# ─── Level Select ────────────────────────────────────────────────
 
-func _create_random_level() -> LevelData:
+func _on_show_level_select() -> void:
+	Engine.time_scale = 1.0
+	tick_engine.stop()
+	hud.hide_game_over()
+	_show_level_select()
+
+func _show_level_select() -> void:
+	level_select.update_stars(level_stars)
+	level_select.visible = true
+	hud.visible = false
+	game_board.visible = false
+	game_board.game_paused = true
+	audio_manager.play_level_select_music()
+
+func _hide_level_select() -> void:
+	level_select.visible = false
+	hud.visible = true
+	game_board.visible = true
+
+func _on_level_selected(level_index: int) -> void:
+	_hide_level_select()
+	_load_level(_create_level(level_index), level_index)
+	audio_manager.play_gameplay_music()
+
+# ─── Level Generation (60 seeded levels) ─────────────────────────
+
+const TOTAL_LEVELS: int = 60
+
+func _create_level(level_index: int) -> LevelData:
+	# Seed RNG for deterministic levels
+	seed(level_index * 73856093 + 19349663)
+
 	var data := LevelData.new()
-	data.level_name = "Random"
-	data.starting_hp = 150
-	data.ticks_between_spawns = 3
-	data.tick_speed = 1.3
+	data.level_name = "Level " + str(level_index + 1)
 
-	# Generate random number sequence (20-30 numbers)
-	var count: int = randi_range(20, 30)
-	var number_pool: Array[int] = [4, 6, 8, 9, 10, 12, 14, 15, 16, 18, 20, 21, 24, 25, 27, 28, 30, 32, 36, 40, 42, 45, 48]
+	# Difficulty scaling
+	var t: float = float(level_index) / float(TOTAL_LEVELS - 1)  # 0.0 to 1.0
+
+	# HP: starts generous, stays reasonable
+	data.starting_hp = int(lerpf(120.0, 200.0, t))
+
+	# Tick speed: slower at start, faster later
+	data.tick_speed = lerpf(1.5, 0.85, t)
+
+	# Spawns between ticks: 3 throughout (keeps rhythm consistent)
+	data.ticks_between_spawns = 3
+
+	# Number count: more numbers at higher levels
+	var count: int = int(lerpf(48.0, 160.0, t))
+
+	# Number pools scale with difficulty
+	var easy_pool: Array[int] = [4, 6, 8, 9, 10, 12]
+	var medium_pool: Array[int] = [4, 6, 8, 9, 10, 12, 14, 15, 16, 18, 20, 21, 24, 25]
+	var hard_pool: Array[int] = [6, 8, 10, 12, 14, 15, 16, 18, 20, 21, 24, 25, 27, 28, 30, 32, 36]
+	var expert_pool: Array[int] = [12, 14, 16, 18, 20, 24, 25, 27, 28, 30, 32, 36, 40, 42, 45, 48]
 	var primes: Array[int] = [7, 11, 13, 17, 19, 23]
+
+	var pool: Array[int]
+	var prime_chance: float
+	if level_index < 15:
+		pool = easy_pool
+		prime_chance = 0.0
+	elif level_index < 30:
+		pool = medium_pool
+		prime_chance = 0.08
+	elif level_index < 45:
+		pool = hard_pool
+		prime_chance = 0.12
+	else:
+		pool = expert_pool
+		prime_chance = 0.18
+
 	data.number_sequence = []
 	for i in count:
-		# 15% chance of a prime
-		if randf() < 0.15:
+		if randf() < prime_chance:
 			data.number_sequence.append(primes[randi() % primes.size()])
 		else:
-			data.number_sequence.append(number_pool[randi() % number_pool.size()])
+			data.number_sequence.append(pool[randi() % pool.size()])
 
-	# Generate random maze
-	data.grid_layout = _generate_random_maze()
+	# Wall density: more open early, denser later
+	var wall_pct: float = lerpf(0.25, 0.40, t)
+	data.grid_layout = _generate_seeded_maze(wall_pct)
+
+	# Reset RNG to non-deterministic for gameplay randomness
+	randomize()
 	return data
 
-func _generate_random_maze() -> PackedStringArray:
+func _generate_seeded_maze(wall_pct: float) -> PackedStringArray:
 	const C: int = 10
 	const R: int = 20
 
-	# Start with all paths
 	var grid: Array = []
 	for y in R:
 		var row: Array = []
@@ -109,22 +245,23 @@ func _generate_random_maze() -> PackedStringArray:
 			row.append(".")
 		grid.append(row)
 
-	# Random start and end — any cells with decent separation
+	# Random start and end with decent separation
 	var start: Vector2i
-	var end: Vector2i
-	while true:
+	var end_pos: Vector2i
+	var safety: int = 0
+	while safety < 500:
+		safety += 1
 		start = Vector2i(randi_range(0, C - 1), randi_range(0, R - 1))
-		end = Vector2i(randi_range(0, C - 1), randi_range(0, R - 1))
-		# Ensure minimum distance (Manhattan >= 15)
-		var dist: int = absi(end.x - start.x) + absi(end.y - start.y)
+		end_pos = Vector2i(randi_range(0, C - 1), randi_range(0, R - 1))
+		var dist: int = absi(end_pos.x - start.x) + absi(end_pos.y - start.y)
 		if dist >= 15:
 			break
 
 	grid[start.y][start.x] = "S"
-	grid[end.y][end.x] = "E"
+	grid[end_pos.y][end_pos.x] = "E"
 
-	# Scatter walls randomly (~35% of cells)
-	var wall_target: int = int(C * R * 0.35)
+	# Scatter walls
+	var wall_target: int = int(C * R * wall_pct)
 	var walls_placed: int = 0
 	var attempts: int = 0
 	while walls_placed < wall_target and attempts < 1000:
@@ -136,18 +273,16 @@ func _generate_random_maze() -> PackedStringArray:
 		grid[wy][wx] = "#"
 		walls_placed += 1
 
-	# Ensure start-to-end path exists, carve one if not
-	if not _bfs_path_exists(grid, start, end, C, R):
-		# BFS to find closest reachable cell to end, then carve through
-		var path_cells: Array[Vector2i] = _bfs_carve_path(grid, start, end, C, R)
+	# Ensure connectivity
+	if not _bfs_path_exists(grid, start, end_pos, C, R):
+		var path_cells: Array[Vector2i] = _bfs_carve_path(grid, start, end_pos, C, R)
 		for cell in path_cells:
 			if grid[cell.y][cell.x] == "#":
 				grid[cell.y][cell.x] = "."
 
 	grid[start.y][start.x] = "S"
-	grid[end.y][end.x] = "E"
+	grid[end_pos.y][end_pos.x] = "E"
 
-	# Convert to strings
 	var result: PackedStringArray = PackedStringArray()
 	for y in R:
 		var row_str: String = ""
@@ -156,8 +291,7 @@ func _generate_random_maze() -> PackedStringArray:
 		result.append(row_str)
 	return result
 
-func _bfs_carve_path(grid: Array, start: Vector2i, end: Vector2i, cols: int, rows: int) -> Array[Vector2i]:
-	"""BFS ignoring walls to find shortest path, returns cells to carve."""
+func _bfs_carve_path(grid: Array, start: Vector2i, end_pos: Vector2i, cols: int, rows: int) -> Array[Vector2i]:
 	var visited: Dictionary = {}
 	var parent: Dictionary = {}
 	var queue: Array[Vector2i] = [start]
@@ -166,10 +300,9 @@ func _bfs_carve_path(grid: Array, start: Vector2i, end: Vector2i, cols: int, row
 	while queue.size() > 0:
 		var current: Vector2i = queue[0]
 		queue.remove_at(0)
-		if current == end:
-			# Trace back path
+		if current == end_pos:
 			var path: Array[Vector2i] = []
-			var c: Vector2i = end
+			var c: Vector2i = end_pos
 			while c != start:
 				path.append(c)
 				c = parent[c]
@@ -184,7 +317,7 @@ func _bfs_carve_path(grid: Array, start: Vector2i, end: Vector2i, cols: int, row
 					queue.append(n)
 	return []
 
-func _bfs_path_exists(grid: Array, start: Vector2i, end: Vector2i, cols: int, rows: int) -> bool:
+func _bfs_path_exists(grid: Array, start: Vector2i, end_pos: Vector2i, cols: int, rows: int) -> bool:
 	var visited: Dictionary = {}
 	var queue: Array[Vector2i] = [start]
 	visited[start] = true
@@ -192,7 +325,7 @@ func _bfs_path_exists(grid: Array, start: Vector2i, end: Vector2i, cols: int, ro
 	while queue.size() > 0:
 		var current: Vector2i = queue[0]
 		queue.remove_at(0)
-		if current == end:
+		if current == end_pos:
 			return true
 		for d in dirs:
 			var n: Vector2i = current + d

@@ -7,16 +7,24 @@ signal tick
 
 var elapsed: float = 0.0
 var running: bool = false
+var paused: bool = false
 
 func start() -> void:
 	running = true
+	paused = false
 	elapsed = 0.0
 
 func stop() -> void:
 	running = false
 
+func pause() -> void:
+	paused = true
+
+func resume() -> void:
+	paused = false
+
 func _process(delta: float) -> void:
-	if not running:
+	if not running or paused:
 		return
 	elapsed += delta
 	if elapsed >= tick_duration:

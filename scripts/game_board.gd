@@ -29,11 +29,13 @@ var towers: Dictionary = {}  # Vector2i -> Tower node
 var numbers: Array = []  # active NumberEntity nodes
 var occupied_cells: Dictionary = {}  # Vector2i -> NumberEntity (cell reservation)
 var level_finished: bool = false
+var game_paused: bool = false
 
 # References (set by main)
 var health_manager: HealthManager
 var tick_engine: TickEngine
 var spawn_manager: SpawnManager
+var audio_manager: AudioManager
 
 # Visual layers
 @onready var tower_container: Node2D = $TowerContainer
@@ -261,6 +263,8 @@ func _sort_by_path_length(a: Variant, b: Variant) -> bool:
 func _check_level_complete() -> void:
 	if level_finished:
 		return
+	if health_manager and health_manager.current_hp <= 0:
+		return
 	if spawn_manager and spawn_manager.is_done() and numbers.size() == 0:
 		level_finished = true
 		var stars := health_manager.get_stars()
@@ -305,8 +309,8 @@ func _in_bounds(cell: Vector2i) -> bool:
 # ─── Input ───────────────────────────────────────────────────────
 
 func _input(event: InputEvent) -> void:
-	# Don't consume input when level is over (let retry button work)
-	if level_finished or (health_manager and health_manager.current_hp <= 0):
+	# Don't consume input when paused or level is over
+	if game_paused or level_finished or (health_manager and health_manager.current_hp <= 0):
 		return
 	# Only handle ScreenTouch — mouse clicks are emulated to touch via project settings
 	if event is InputEventScreenTouch and event.pressed:
@@ -335,6 +339,8 @@ func _try_place_tower(cell: Vector2i) -> void:
 	if not health_manager.spend(1):
 		return
 	place_tower(cell)
+	if audio_manager:
+		audio_manager.play_tower_place()
 
 func _try_upgrade_tower(cell: Vector2i) -> void:
 	var tower = get_tower_at(cell)
@@ -345,6 +351,8 @@ func _try_upgrade_tower(cell: Vector2i) -> void:
 	if not health_manager.spend(1):
 		return
 	tower.increment()
+	if audio_manager:
+		audio_manager.play_tower_place()
 
 func _flash_invalid(cell: Vector2i) -> void:
 	# Visual feedback for invalid placement

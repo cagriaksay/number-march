@@ -47,6 +47,10 @@ func _ready() -> void:
 		mat.shader = pencil_shader
 		label.material = mat
 	_update_label()
+	# Fade in on spawn
+	modulate.a = 0.0
+	var fade_tween := create_tween()
+	fade_tween.tween_property(self, "modulate:a", 1.0, 0.3)
 
 func set_path(new_path: Array[Vector2i]) -> void:
 	path = new_path
@@ -93,6 +97,8 @@ func _start_next_move() -> void:
 
 func _process(delta: float) -> void:
 	if dead or not is_moving:
+		return
+	if board and board.game_paused:
 		return
 
 	walk_progress += delta * walk_speed
@@ -145,6 +151,10 @@ func _check_adjacent_towers() -> void:
 			var old_value: int = value
 			value = value / tower.value
 			tower.degrade()
+			# Award 1 point per successful division
+			board.health_manager.heal(1)
+			if board.audio_manager:
+				board.audio_manager.play_division()
 			_play_divide_effect(old_value)
 			_update_label()
 			if value <= 1:
@@ -176,11 +186,11 @@ func _update_label() -> void:
 		label.add_theme_color_override("font_color", color_number)
 		label.add_theme_constant_override("outline_size", 1)
 		label.add_theme_color_override("font_outline_color", color_number)
-		var font_size: int = 22
+		var font_size: int = 26
 		if value >= 100:
-			font_size = 14
+			font_size = 17
 		elif value >= 10:
-			font_size = 18
+			font_size = 22
 		label.add_theme_font_size_override("font_size", font_size)
 
 func _play_divide_effect(old_value: int) -> void:
