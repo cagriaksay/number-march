@@ -12,7 +12,7 @@ var caveat_font: Font
 var caveat_bold: Font
 var pencil_material: ShaderMaterial
 
-var DEBUG_FPS: bool = OS.is_debug_build()
+var DEBUG_FPS: bool = false
 
 @onready var health_label: Label = $HealthLabel
 var fps_label: Label
@@ -29,6 +29,7 @@ var ff_active: bool = false
 # Pause popup
 var pause_overlay: Control
 var pause_paper: Control
+var pause_level_label: Label
 var is_paused: bool = false
 
 # Toggle buttons on pause menu
@@ -77,6 +78,7 @@ func _ready() -> void:
 		pencil_material.shader = pencil_shader
 		health_label.material = pencil_material
 	# Debug FPS counter
+	DEBUG_FPS = OS.is_debug_build()
 	if DEBUG_FPS:
 		fps_label = Label.new()
 		fps_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -223,13 +225,25 @@ func _create_pause_popup() -> void:
 	var title := Label.new()
 	title.text = "Paused"
 	title.size = Vector2(220, 50)
-	title.position = Vector2(0, 20)
+	title.position = Vector2(0, 14)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_apply_font(title, 34, Color("#333333"))
 	if pencil_material:
 		title.material = pencil_material
 	pause_paper.add_child(title)
+
+	# Level name
+	pause_level_label = Label.new()
+	pause_level_label.text = ""
+	pause_level_label.size = Vector2(220, 30)
+	pause_level_label.position = Vector2(0, 52)
+	pause_level_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	pause_level_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_apply_font(pause_level_label, 18, Color("#777777"))
+	if pencil_material:
+		pause_level_label.material = pencil_material
+	pause_paper.add_child(pause_level_label)
 
 	# Resume button
 	var resume_btn := Button.new()
@@ -377,6 +391,10 @@ func _on_vibration_toggle() -> void:
 	_set_toggle_visual(vibration_toggle, audio_manager_ref.vibration_enabled)
 	settings_changed.emit()
 
+func set_level_name(text: String) -> void:
+	if pause_level_label:
+		pause_level_label.text = text
+
 func show_pause() -> void:
 	is_paused = true
 	pause_overlay.visible = true
@@ -440,7 +458,7 @@ var queue_paused: bool = false  # pause scroll when spawn is blocked
 
 # Queue waddle animation
 var queue_waddle_time: float = 0.0
-const QUEUE_WADDLE_SPEED: float = 2.5  # cycles per second
+const QUEUE_WADDLE_SPEED: float = 1.5  # cycles per second
 const QUEUE_TILT: float = 0.12  # radians (~7°)
 const QUEUE_BOUNCE: float = 1.5  # pixels vertical
 
@@ -610,8 +628,8 @@ func _create_music_name_label() -> void:
 	music_name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	music_name_label.offset_left = 40.0
 	music_name_label.offset_right = 350.0
-	music_name_label.offset_top = 30.0
-	music_name_label.offset_bottom = 48.0
+	music_name_label.offset_top = 850.0
+	music_name_label.offset_bottom = 865.0
 	music_name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	music_name_label.modulate.a = 0.0
 	_apply_font(music_name_label, 14, Color("#888888"))

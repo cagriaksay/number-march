@@ -77,6 +77,7 @@ func _load_level(data: LevelData, level_index: int) -> void:
 	spawn_manager.setup(data.number_sequence, data.ticks_between_spawns)
 	tick_engine.tick_duration = data.tick_speed
 	hud.hide_game_over()
+	hud.set_level_name("Level " + str(level_index + 1))
 	hud.set_scroll_speed(data.ticks_between_spawns, data.tick_speed)
 	tick_engine.start()
 	game_board.game_paused = false
@@ -427,10 +428,19 @@ func _load_progress() -> void:
 
 func _get_hand_designed_level(level_index: int) -> LevelData:
 	match level_index:
-		0:
-			return _tutorial_level_1()
-		_:
-			return null
+		0: return _tutorial_level_1()
+		1: return _level_2_the_bend()
+		2: return _level_3_slalom()
+		3: return _level_4_spiral()
+		4: return _level_5_s_curve()
+		5: return _level_6_teeth()
+		6: return _level_7_diamond()
+		7: return _level_8_fortress()
+		8: return _level_9_dense_snake()
+		9: return _level_10_gauntlet()
+		_: return null
+
+# ─── Level 1: Tutorial ──────────────────────────────────────────
 
 func _tutorial_level_1() -> LevelData:
 	var data := LevelData.new()
@@ -439,40 +449,418 @@ func _tutorial_level_1() -> LevelData:
 	data.tick_speed = 2.0
 	data.ticks_between_spawns = 4
 
-	# Simple snake: 3 turns, clear corridors
-	# Numbers march right → down → left → down → right to exit
 	data.grid_layout = PackedStringArray([
-		"..........",  # y=0   (empty top)
-		"..........",  # y=1
-		"S.........",  # y=2   start top-left
-		"#########.",  # y=3   wall with gap at right
-		"..........",  # y=4   open corridor left
-		".#########",  # y=5   wall with gap at left
-		"..........",  # y=6   open corridor right
-		"#########.",  # y=7   wall with gap at right
-		"..........",  # y=8   open corridor left
-		".#########",  # y=9   wall with gap at left
-		"..........",  # y=10  open corridor right
-		"..........",  # y=11
-		"..........",  # y=12
-		"..........",  # y=13
-		"..........",  # y=14
-		"..........",  # y=15
-		"..........",  # y=16
-		".........E",  # y=17  exit bottom-right
-		"..........",  # y=18
-		"..........",  # y=19
+		"..........",
+		"..........",
+		"S.........",
+		"#########.",
+		"..........",
+		".#########",
+		"..........",
+		"#########.",
+		"..........",
+		".#########",
+		"..........",
+		"..........",
+		"..........",
+		"..........",
+		"..........",
+		"..........",
+		"..........",
+		".........E",
+		"..........",
+		"..........",
 	])
 
-	# Easy numbers: small, all divisible by 2 or 3
 	data.number_sequence = [4, 6, 4, 8, 6, 4, 9, 6, 4, 8, 6, 4]
 
-	# Tutorial hints scribbled on the board
 	data.tutorial_hints = [
 		{"text": "tap a tile to\nplace a tower", "x": 1, "y": 11, "width": 8, "height": 3},
-		{"text": "tap more\nto increase", "x": 1, "y": 14, "width": 8, "height": 3},
-		{"text": "can't block\nthe path!", "x": 2, "y": 17, "width": 7, "height": 3},
-		{"text": "don't let\nthem escape!", "x": 2, "y": 0, "width": 7, "height": 2},
+		{"text": "towers divide\nnearby numbers", "x": 1, "y": 14, "width": 8, "height": 3},
+		{"text": "tap again\nto increase", "x": 2, "y": 17, "width": 7, "height": 3},
+		{"text": "reduce to 1\nbefore they escape!", "x": 1, "y": 0, "width": 8, "height": 2},
 	]
+	return data
 
+# ─── Level 2: The Bend ──────────────────────────────────────────
+# One big wall → simple U-turn
+
+func _level_2_the_bend() -> LevelData:
+	var data := LevelData.new()
+	data.level_name = "The Bend"
+	data.starting_hp = 130
+	data.tick_speed = 1.8
+	data.ticks_between_spawns = 4
+
+	data.grid_layout = PackedStringArray([
+		"S.........",
+		"..........",
+		"..........",
+		"..........",
+		"..........",
+		"..........",
+		"..........",
+		"..........",
+		"..........",
+		"#########.",
+		"..........",
+		"..........",
+		"..........",
+		"..........",
+		"..........",
+		"..........",
+		"..........",
+		"..........",
+		"..........",
+		"E.........",
+	])
+
+	data.number_sequence = [
+		4, 6, 4, 8, 6, 4, 6, 8,
+		4, 9, 6, 8, 4, 6, 4, 8,
+		6, 9, 4, 6, 8, 4, 6, 4,
+	]
+	return data
+
+# ─── Level 3: Slalom ────────────────────────────────────────────
+# Half-walls from alternating sides
+
+func _level_3_slalom() -> LevelData:
+	var data := LevelData.new()
+	data.level_name = "Slalom"
+	data.starting_hp = 125
+	data.tick_speed = 1.7
+	data.ticks_between_spawns = 4
+
+	data.grid_layout = PackedStringArray([
+		"S.........",
+		"..........",
+		"######....",
+		"..........",
+		"....######",
+		"..........",
+		"######....",
+		"..........",
+		"....######",
+		"..........",
+		"######....",
+		"..........",
+		"....######",
+		"..........",
+		"######....",
+		"..........",
+		"....######",
+		"..........",
+		"..........",
+		".........E",
+	])
+
+	data.number_sequence = [
+		4, 6, 8, 4, 9, 6, 8, 4,
+		6, 8, 10, 4, 6, 9, 8, 4,
+		6, 8, 4, 10, 6, 8, 4, 6,
+		9, 8, 4, 6, 10, 8, 4, 6,
+	]
+	return data
+
+# ─── Level 4: Spiral ────────────────────────────────────────────
+# Concentric rectangles
+
+func _level_4_spiral() -> LevelData:
+	var data := LevelData.new()
+	data.level_name = "Spiral"
+	data.starting_hp = 125
+	data.tick_speed = 1.6
+	data.ticks_between_spawns = 3
+
+	data.grid_layout = PackedStringArray([
+		"S.........",
+		".########.",
+		".#......#.",
+		".#.####.#.",
+		".#.#..#.#.",
+		".#.#..#.#.",
+		".#.#..#.#.",
+		".#.####.#.",
+		".#......#.",
+		".########.",
+		"..........",
+		"..........",
+		"..........",
+		"..........",
+		"..........",
+		"..........",
+		"..........",
+		"..........",
+		"..........",
+		".........E",
+	])
+
+	data.number_sequence = [
+		6, 8, 9, 12, 6, 8, 4, 9,
+		12, 6, 8, 15, 6, 9, 12, 8,
+		6, 4, 8, 12, 9, 6, 8, 15,
+		12, 6, 9, 8, 4, 6, 12, 8,
+	]
+	return data
+
+# ─── Level 5: S-Curve ───────────────────────────────────────────
+# Two walls, start top-right, exit bottom-left
+
+func _level_5_s_curve() -> LevelData:
+	var data := LevelData.new()
+	data.level_name = "S-Curve"
+	data.starting_hp = 120
+	data.tick_speed = 1.5
+	data.ticks_between_spawns = 3
+
+	data.grid_layout = PackedStringArray([
+		".........S",
+		"..........",
+		"..........",
+		"..........",
+		"..........",
+		".#########",
+		"..........",
+		"..........",
+		"..........",
+		"..........",
+		"..........",
+		"..........",
+		"..........",
+		"..........",
+		"#########.",
+		"..........",
+		"..........",
+		"..........",
+		"..........",
+		"E.........",
+	])
+
+	data.number_sequence = [
+		8, 9, 12, 6, 10, 8, 4, 12,
+		9, 6, 8, 10, 12, 8, 6, 9,
+		4, 12, 8, 10, 6, 9, 12, 8,
+		8, 6, 10, 12, 9, 4, 8, 6,
+		12, 10, 8, 9, 6, 12, 8, 4,
+	]
+	return data
+
+# ─── Level 6: The Teeth ─────────────────────────────────────────
+# Thick comb teeth from top and bottom
+
+func _level_6_teeth() -> LevelData:
+	var data := LevelData.new()
+	data.level_name = "The Teeth"
+	data.starting_hp = 120
+	data.tick_speed = 1.4
+	data.ticks_between_spawns = 3
+
+	data.grid_layout = PackedStringArray([
+		"S.........",
+		".##.##.##.",
+		".##.##.##.",
+		".##.##.##.",
+		".##.##.##.",
+		".##.##.##.",
+		"..........",
+		"..........",
+		"..........",
+		"..........",
+		"..........",
+		"..........",
+		"..........",
+		"..........",
+		"##.##.##..",
+		"##.##.##..",
+		"##.##.##..",
+		"##.##.##..",
+		"##.##.##..",
+		".........E",
+	])
+
+	data.number_sequence = [
+		9, 12, 15, 8, 10, 16, 6, 12,
+		18, 9, 8, 15, 12, 10, 6, 16,
+		9, 18, 12, 8, 15, 10, 6, 9,
+		12, 16, 8, 18, 15, 12, 9, 6,
+		10, 8, 16, 12, 18, 15, 9, 12,
+		8, 6, 10, 16, 12, 9, 15, 18,
+	]
+	return data
+
+# ─── Level 7: Diamond ───────────────────────────────────────────
+# Diamond-shaped wall block in the center
+
+func _level_7_diamond() -> LevelData:
+	var data := LevelData.new()
+	data.level_name = "Diamond"
+	data.starting_hp = 120
+	data.tick_speed = 1.3
+	data.ticks_between_spawns = 3
+
+	data.grid_layout = PackedStringArray([
+		"S.........",
+		"..........",
+		"..........",
+		"..........",
+		"..........",
+		".....#....",
+		"....###...",
+		"...#####..",
+		"..#######.",
+		".#########",
+		"..#######.",
+		"...#####..",
+		"....###...",
+		".....#....",
+		"..........",
+		"..........",
+		"..........",
+		"..........",
+		"..........",
+		".........E",
+	])
+
+	data.number_sequence = [
+		12, 15, 16, 18, 8, 20, 12, 9,
+		24, 15, 16, 12, 18, 8, 20, 15,
+		12, 24, 16, 9, 18, 12, 20, 15,
+		16, 8, 24, 12, 18, 15, 20, 9,
+		12, 16, 24, 18, 15, 8, 12, 20,
+		16, 24, 12, 18, 9, 15, 20, 12,
+	]
+	return data
+
+# ─── Level 8: Fortress ──────────────────────────────────────────
+# Central block with walls above and below
+
+func _level_8_fortress() -> LevelData:
+	var data := LevelData.new()
+	data.level_name = "Fortress"
+	data.starting_hp = 115
+	data.tick_speed = 1.2
+	data.ticks_between_spawns = 3
+
+	data.grid_layout = PackedStringArray([
+		"S.........",
+		"..........",
+		"#########.",
+		"..........",
+		"..........",
+		"...####...",
+		"...####...",
+		"...####...",
+		"...####...",
+		"...####...",
+		"...####...",
+		"...####...",
+		"...####...",
+		"..........",
+		"..........",
+		".#########",
+		"..........",
+		"..........",
+		"..........",
+		".........E",
+	])
+
+	data.number_sequence = [
+		15, 16, 18, 20, 24, 12, 25, 16,
+		18, 20, 15, 24, 12, 16, 25, 18,
+		20, 15, 12, 24, 16, 25, 18, 20,
+		15, 16, 12, 24, 25, 18, 20, 15,
+		16, 24, 12, 18, 25, 20, 15, 16,
+		12, 24, 18, 25, 20, 16, 15, 12,
+		24, 18, 25, 20, 16, 15, 12, 24,
+	]
+	return data
+
+# ─── Level 9: Dense Snake ───────────────────────────────────────
+# Maximum turns filling the whole grid
+
+func _level_9_dense_snake() -> LevelData:
+	var data := LevelData.new()
+	data.level_name = "Dense Snake"
+	data.starting_hp = 115
+	data.tick_speed = 1.1
+	data.ticks_between_spawns = 3
+
+	data.grid_layout = PackedStringArray([
+		"S.........",
+		"#########.",
+		"..........",
+		".#########",
+		"..........",
+		"#########.",
+		"..........",
+		".#########",
+		"..........",
+		"#########.",
+		"..........",
+		".#########",
+		"..........",
+		"#########.",
+		"..........",
+		".#########",
+		"..........",
+		"#########.",
+		"..........",
+		".........E",
+	])
+
+	data.number_sequence = [
+		16, 18, 20, 24, 25, 15, 27, 18,
+		20, 16, 24, 12, 25, 27, 18, 20,
+		16, 15, 24, 25, 27, 18, 12, 20,
+		16, 24, 25, 27, 18, 15, 20, 16,
+		24, 12, 25, 18, 27, 20, 16, 24,
+		25, 15, 27, 18, 20, 12, 16, 24,
+		25, 27, 18, 20, 16, 15, 24, 12,
+	]
+	return data
+
+# ─── Level 10: The Gauntlet ─────────────────────────────────────
+# Dense slalom with tight half-walls
+
+func _level_10_gauntlet() -> LevelData:
+	var data := LevelData.new()
+	data.level_name = "The Gauntlet"
+	data.starting_hp = 110
+	data.tick_speed = 1.0
+	data.ticks_between_spawns = 3
+
+	data.grid_layout = PackedStringArray([
+		"S.........",
+		"#######...",
+		"..........",
+		"...#######",
+		"..........",
+		"#######...",
+		"..........",
+		"...#######",
+		"..........",
+		"#######...",
+		"..........",
+		"...#######",
+		"..........",
+		"#######...",
+		"..........",
+		"...#######",
+		"..........",
+		"#######...",
+		"..........",
+		".........E",
+	])
+
+	data.number_sequence = [
+		18, 20, 24, 25, 27, 16, 30, 18,
+		20, 24, 12, 25, 27, 30, 16, 18,
+		20, 24, 25, 15, 27, 30, 18, 20,
+		24, 16, 25, 27, 12, 30, 18, 20,
+		24, 25, 27, 30, 16, 18, 15, 20,
+		24, 25, 12, 27, 30, 18, 20, 24,
+		25, 27, 16, 30, 18, 20, 15, 24,
+		25, 27, 30, 12, 18, 20, 24, 16,
+	]
 	return data

@@ -74,7 +74,7 @@ func _compute_layout() -> void:
 	var viewport_size: Vector2 = get_viewport_rect().size
 	var board_width: float = cell_size * COLS
 	board_offset.x = (viewport_size.x - board_width) / 2.0
-	board_offset.y = 50.0  # safe area below notch
+	board_offset.y = 60.0  # safe area below notch
 
 # ─── Level Loading ───────────────────────────────────────────────
 
@@ -170,9 +170,9 @@ func _spawn_tutorial_hints(hints: Array) -> void:
 		mat.shader = pencil_shader
 		label.material = mat
 
-		# Slight random rotation for hand-written feel
+		# Random rotation for hand-written notebook feel
 		label.pivot_offset = label.size / 2.0
-		label.rotation = randf_range(-0.03, 0.03)
+		label.rotation = randf_range(-0.08, 0.08)
 
 		hint_container.add_child(label)
 
@@ -465,8 +465,67 @@ func _draw_cells() -> void:
 					_draw_wall_cell(rect, x, y)
 				CellType.START:
 					_draw_colored_shading(rect, x, y, Color(0.2, 0.55, 0.25, 0.35), Color(0.25, 0.6, 0.3, 0.25))
+					_draw_play_button(rect, x, y)
 				CellType.END:
 					_draw_colored_shading(rect, x, y, Color(0.7, 0.2, 0.2, 0.35), Color(0.75, 0.25, 0.2, 0.25))
+					_draw_stop_square(rect, x, y)
+
+func _draw_play_button(rect: Rect2, cx: int, cy: int) -> void:
+	var h := _cell_hash(cx, cy)
+	var center := rect.position + rect.size / 2.0
+	var s := rect.size.x * 0.3  # half-size of triangle
+	var col := Color(0.2, 0.5, 0.2, 0.6)
+
+	# Play triangle pointing right, with slight wobble
+	var angles := [deg_to_rad(-150.0), deg_to_rad(0.0), deg_to_rad(150.0)]
+	var pts: PackedVector2Array = []
+	for i in 3:
+		var angle: float = angles[i]
+		# Wobble each vertex a bit
+		var wobble_x := (fmod(float(h + i * 3917), 5.0) - 2.5) * 1.2
+		var wobble_y := (fmod(float(h + i * 7213), 5.0) - 2.5) * 1.2
+		var r: float = s * 0.85
+		if i == 1:
+			r = s
+		pts.append(center + Vector2(cos(angle) * r + wobble_x, sin(angle) * r + wobble_y))
+
+	# Draw filled triangle
+	draw_colored_polygon(pts, col)
+
+	# Draw wobbly outline strokes
+	var outline_col := Color(0.15, 0.4, 0.15, 0.7)
+	for i in pts.size():
+		var from := pts[i]
+		var to := pts[(i + 1) % pts.size()]
+		draw_line(from, to, outline_col, 1.5)
+
+func _draw_stop_square(rect: Rect2, cx: int, cy: int) -> void:
+	var h := _cell_hash(cx, cy)
+	var center := rect.position + rect.size / 2.0
+	var s := rect.size.x * 0.25
+	var col := Color(0.6, 0.15, 0.15, 0.6)
+
+	# Wobbly square corners
+	var pts: PackedVector2Array = []
+	for i in 4:
+		var wx := (fmod(float(h + i * 4219), 5.0) - 2.5) * 1.0
+		var wy := (fmod(float(h + i * 6173), 5.0) - 2.5) * 1.0
+		var corner: Vector2
+		if i == 0:
+			corner = center + Vector2(-s + wx, -s + wy)
+		elif i == 1:
+			corner = center + Vector2(s + wx, -s + wy)
+		elif i == 2:
+			corner = center + Vector2(s + wx, s + wy)
+		else:
+			corner = center + Vector2(-s + wx, s + wy)
+		pts.append(corner)
+
+	draw_colored_polygon(pts, col)
+
+	var outline_col := Color(0.45, 0.1, 0.1, 0.7)
+	for i in pts.size():
+		draw_line(pts[i], pts[(i + 1) % pts.size()], outline_col, 1.5)
 
 func _cell_hash(cx: int, cy: int) -> int:
 	# Simple integer hash for grid coordinates
