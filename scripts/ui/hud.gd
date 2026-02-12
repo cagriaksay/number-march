@@ -12,7 +12,7 @@ var caveat_font: Font
 var caveat_bold: Font
 var pencil_material: ShaderMaterial
 
-const DEBUG_FPS: bool = true
+var DEBUG_FPS: bool = OS.is_debug_build()
 
 @onready var health_label: Label = $HealthLabel
 var fps_label: Label
@@ -561,10 +561,13 @@ func _style_queue_label(lbl: Label, index: int, x_pos: float) -> void:
 		lbl.add_theme_color_override("font_color", Color("#555555"))
 		lbl.add_theme_color_override("font_outline_color", Color("#555555"))
 
+var _survived_last: bool = false
+
 func show_game_over(stars: int, survived: bool) -> void:
 	game_over_panel.visible = true
 	pause_button.visible = false
 	ff_button.visible = false
+	_survived_last = survived
 	if survived:
 		game_over_label.text = "Level Complete!"
 		var star_text: String = ""
@@ -574,10 +577,11 @@ func show_game_over(stars: int, survived: bool) -> void:
 			else:
 				star_text += "☆ "
 		stars_label.text = star_text
+		retry_button.text = "Next"
 	else:
 		game_over_label.text = "Game Over"
 		stars_label.text = ""
-	retry_button.text = "Retry"
+		retry_button.text = "Retry"
 
 func hide_game_over() -> void:
 	game_over_panel.visible = false

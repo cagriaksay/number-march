@@ -159,10 +159,19 @@ func _on_restart() -> void:
 
 func _on_retry() -> void:
 	Engine.time_scale = 1.0
-	if current_level_index >= 0:
-		_load_level(_create_level(current_level_index), current_level_index)
+	if hud._survived_last:
+		# "Next" button — advance to next level
+		var next_index: int = current_level_index + 1
+		if next_index >= TOTAL_LEVELS:
+			_on_show_level_select()
+			return
+		_load_level(_create_level(next_index), next_index)
 	else:
-		_load_level(_create_level(0), 0)
+		# "Retry" button — replay same level
+		if current_level_index >= 0:
+			_load_level(_create_level(current_level_index), current_level_index)
+		else:
+			_load_level(_create_level(0), 0)
 	audio_manager.play_gameplay_music()
 
 # ─── Level Select ────────────────────────────────────────────────
@@ -196,6 +205,12 @@ func _on_level_selected(level_index: int) -> void:
 const TOTAL_LEVELS: int = 60
 
 func _create_level(level_index: int) -> LevelData:
+	# Check for hand-designed levels first (tutorials)
+	var hand_designed := _get_hand_designed_level(level_index)
+	if hand_designed:
+		randomize()
+		return hand_designed
+
 	# Seed RNG for deterministic levels
 	seed(level_index * 73856093 + 19349663)
 
@@ -407,3 +422,57 @@ func _load_progress() -> void:
 				audio_manager.sfx_enabled = bool(s["sfx"])
 			if s.has("vibration"):
 				audio_manager.vibration_enabled = bool(s["vibration"])
+
+# ─── Hand-designed Levels (Tutorials) ─────────────────────────────
+
+func _get_hand_designed_level(level_index: int) -> LevelData:
+	match level_index:
+		0:
+			return _tutorial_level_1()
+		_:
+			return null
+
+func _tutorial_level_1() -> LevelData:
+	var data := LevelData.new()
+	data.level_name = "Tutorial"
+	data.starting_hp = 150
+	data.tick_speed = 2.0
+	data.ticks_between_spawns = 4
+
+	# Simple snake: 3 turns, clear corridors
+	# Numbers march right → down → left → down → right to exit
+	data.grid_layout = PackedStringArray([
+		"..........",  # y=0   (empty top)
+		"..........",  # y=1
+		"S.........",  # y=2   start top-left
+		"#########.",  # y=3   wall with gap at right
+		"..........",  # y=4   open corridor left
+		".#########",  # y=5   wall with gap at left
+		"..........",  # y=6   open corridor right
+		"#########.",  # y=7   wall with gap at right
+		"..........",  # y=8   open corridor left
+		".#########",  # y=9   wall with gap at left
+		"..........",  # y=10  open corridor right
+		"..........",  # y=11
+		"..........",  # y=12
+		"..........",  # y=13
+		"..........",  # y=14
+		"..........",  # y=15
+		"..........",  # y=16
+		".........E",  # y=17  exit bottom-right
+		"..........",  # y=18
+		"..........",  # y=19
+	])
+
+	# Easy numbers: small, all divisible by 2 or 3
+	data.number_sequence = [4, 6, 4, 8, 6, 4, 9, 6, 4, 8, 6, 4]
+
+	# Tutorial hints scribbled on the board
+	data.tutorial_hints = [
+		{"text": "tap a tile to\nplace a tower", "x": 1, "y": 11, "width": 8, "height": 3},
+		{"text": "tap more\nto increase", "x": 1, "y": 14, "width": 8, "height": 3},
+		{"text": "can't block\nthe path!", "x": 2, "y": 17, "width": 7, "height": 3},
+		{"text": "don't let\nthem escape!", "x": 2, "y": 0, "width": 7, "height": 2},
+	]
+
+	return data

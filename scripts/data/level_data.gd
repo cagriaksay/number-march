@@ -19,3 +19,7 @@ extends Resource
 
 ## Tick speed in seconds (lower = faster)
 @export var tick_speed: float = 1.0
+
+## Tutorial hints: Array of { "text": String, "x": int, "y": int, "width": int }
+## Positioned in grid coords, rendered as hand-written notes on the board
+@export var tutorial_hints: Array = []

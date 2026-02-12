@@ -41,6 +41,7 @@ var audio_manager: AudioManager
 @onready var tower_container: Node2D = $TowerContainer
 @onready var number_container: Node2D = $NumberContainer
 @onready var effects_container: Node2D = $EffectsContainer
+var hint_container: Node2D  # for tutorial text
 
 # Preloads
 var number_scene: PackedScene = preload("res://scenes/entities/number_entity.tscn")
@@ -61,6 +62,11 @@ var caveat_font: Font
 
 func _ready() -> void:
 	caveat_font = load("res://assets/fonts/Caveat-Bold.ttf")
+	# Create hint container (between towers and numbers, so text is behind marching numbers)
+	hint_container = Node2D.new()
+	hint_container.name = "HintContainer"
+	add_child(hint_container)
+	move_child(hint_container, tower_container.get_index() + 1)
 	_compute_layout()
 
 func _compute_layout() -> void:
@@ -77,6 +83,7 @@ func load_level(data: LevelData) -> void:
 	_init_grid()
 	_parse_layout(data.grid_layout)
 	_setup_astar()
+	_spawn_tutorial_hints(data.tutorial_hints)
 	queue_redraw()
 
 func _clear_board() -> void:
@@ -86,6 +93,9 @@ func _clear_board() -> void:
 		child.queue_free()
 	for child in effects_container.get_children():
 		child.queue_free()
+	if hint_container:
+		for child in hint_container.get_children():
+			child.queue_free()
 	towers.clear()
 	numbers.clear()
 	occupied_cells.clear()
@@ -119,6 +129,52 @@ func _parse_layout(layout: PackedStringArray) -> void:
 					end_cell = Vector2i(x, y)
 				_:
 					grid[x][y] = CellType.PATH
+
+# ─── Tutorial Hints ──────────────────────────────────────────────
+
+func _spawn_tutorial_hints(hints: Array) -> void:
+	if hints.is_empty():
+		return
+	var pencil_shader: Shader = load("res://assets/shaders/pencil.gdshader")
+	for hint in hints:
+		if not (hint is Dictionary):
+			continue
+		var text: String = hint.get("text", "")
+		var gx: int = hint.get("x", 0)
+		var gy: int = hint.get("y", 0)
+		var gw: int = hint.get("width", 4)
+		if text.is_empty():
+			continue
+
+		var label := Label.new()
+		label.text = text
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+
+		# Position in grid coordinates
+		var px: float = board_offset.x + gx * cell_size
+		var py: float = board_offset.y + gy * cell_size
+		label.position = Vector2(px, py)
+		var gh: int = hint.get("height", 2)
+		label.size = Vector2(gw * cell_size, gh * cell_size)
+
+		# Font: Caveat Bold, pencil shader
+		label.add_theme_font_override("font", caveat_font)
+		label.add_theme_font_size_override("font_size", 32)
+		label.add_theme_color_override("font_color", Color("#666666"))
+		label.add_theme_constant_override("outline_size", 1)
+		label.add_theme_color_override("font_outline_color", Color("#666666"))
+
+		# Pencil shader
+		var mat := ShaderMaterial.new()
+		mat.shader = pencil_shader
+		label.material = mat
+
+		# Slight random rotation for hand-written feel
+		label.pivot_offset = label.size / 2.0
+		label.rotation = randf_range(-0.03, 0.03)
+
+		hint_container.add_child(label)
 
 # ─── Pathfinding ─────────────────────────────────────────────────
 
