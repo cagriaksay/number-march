@@ -278,8 +278,8 @@ func _create_pause_popup() -> void:
 	levels_btn.pressed.connect(_on_level_select_pressed)
 	pause_paper.add_child(levels_btn)
 
-	# Edit Level button (debug only)
-	if OS.is_debug_build():
+	# Edit Level button (editor only — hidden in all exports, including debug)
+	if OS.has_feature("editor"):
 		var edit_btn := Button.new()
 		edit_btn.text = "Edit Level"
 		edit_btn.flat = true
