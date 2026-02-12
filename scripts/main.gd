@@ -45,7 +45,7 @@ func _ready() -> void:
 	hud.resume_pressed.connect(_on_resume)
 	hud.restart_pressed.connect(_on_restart)
 	hud.level_select_pressed.connect(_on_show_level_select)
-	hud.fast_forward_toggled.connect(_on_fast_forward)
+	hud.fast_forward_changed.connect(_on_fast_forward)
 	hud.settings_changed.connect(save_settings)
 	hud.edit_level_pressed.connect(_on_edit_level)
 	hud.edit_save_pressed.connect(_on_edit_save)
@@ -65,6 +65,7 @@ func _ready() -> void:
 	# Pass audio manager references
 	game_board.audio_manager = audio_manager
 	hud.audio_manager_ref = audio_manager
+	level_select.audio_manager_ref = audio_manager
 
 	# Load saved progress
 	_load_progress()
@@ -149,11 +150,8 @@ func _on_resume() -> void:
 	tick_engine.resume()
 	game_board.game_paused = false
 
-func _on_fast_forward(enabled: bool) -> void:
-	if enabled:
-		Engine.time_scale = 2.0
-	else:
-		Engine.time_scale = 1.0
+func _on_fast_forward(speed: float) -> void:
+	Engine.time_scale = speed
 
 func _on_restart() -> void:
 	Engine.time_scale = 1.0

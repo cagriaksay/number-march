@@ -202,6 +202,13 @@ func _on_music_finished() -> void:
 
 # ─── SFX Playback ───────────────────────────────────────────────
 
+# Per-SFX volume offsets (added to SFX_VOLUME_DB)
+var sfx_volume_overrides: Dictionary = {
+	"sfx_division": -6.0,
+	"sfx_solved": -6.0,
+	"sfx_spawn": -6.0,
+}
+
 func play_sfx(sfx_name: String) -> void:
 	if not sfx_enabled:
 		return
@@ -210,7 +217,8 @@ func play_sfx(sfx_name: String) -> void:
 	var player := _get_free_sfx_player()
 	if player:
 		player.stream = sfx_clips[sfx_name]
-		player.volume_db = SFX_VOLUME_DB
+		var vol: float = SFX_VOLUME_DB + sfx_volume_overrides.get(sfx_name, 0.0)
+		player.volume_db = vol
 		player.play()
 
 func _get_free_sfx_player() -> AudioStreamPlayer:

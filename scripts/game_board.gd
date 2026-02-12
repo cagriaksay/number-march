@@ -285,6 +285,8 @@ func spawn_number(value: int) -> void:
 	num_node.position = grid_to_local(start_cell)
 	numbers.append(num_node)
 	occupied_cells[start_cell] = num_node
+	if audio_manager:
+		audio_manager.play_sfx("sfx_spawn")
 
 func remove_number_from_tracking(num: Node2D) -> void:
 	# Release occupied cell

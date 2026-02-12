@@ -1,8 +1,7 @@
 shader_type canvas_item;
 
-// Pencil graphite shader: realistic pencil-on-paper look.
-// Graphite fills paper grooves unevenly, has directional strokes,
-// fine grain particles, and subtle warm/cool color shifts.
+// Pencil graphite shader: lightweight version for mobile.
+// Keeps the pencil-on-paper aesthetic but with much less per-pixel work.
 
 float hash12(vec2 p) {
 	vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -21,18 +20,6 @@ float value_noise(vec2 p) {
 	);
 }
 
-float fbm(vec2 p, int octaves) {
-	float v = 0.0;
-	float a = 0.5;
-	vec2 shift = vec2(100.0);
-	for (int i = 0; i < octaves; i++) {
-		v += a * value_noise(p);
-		p = p * 2.0 + shift;
-		a *= 0.5;
-	}
-	return v;
-}
-
 void fragment() {
 	vec4 tex = texture(TEXTURE, UV);
 	float base_alpha = COLOR.a * tex.a;
@@ -43,48 +30,29 @@ void fragment() {
 
 	vec2 px = FRAGCOORD.xy;
 
-	// ── Paper grain: rough paper surface — graphite only fills the peaks ──
-	// Multiple frequencies of grain for realistic paper tooth
-	float grain_fine = hash12(px);
-	float grain_med = hash12(px * 0.5 + 7.3);
-	float paper_grain = grain_fine * 0.6 + grain_med * 0.4;
+	// ── Paper grain: single-frequency noise for paper tooth ──
+	float grain = hash12(px) * 0.6 + hash12(px * 0.5 + 7.3) * 0.4;
 
-	// ── Graphite texture: uneven pressure across the stroke ──
-	float graphite = fbm(px * 0.12, 5);
+	// ── Graphite texture: single noise layer (was 5-octave fbm) ──
+	float graphite = value_noise(px * 0.12);
 
-	// ── Directional hatching: visible pencil stroke direction ──
-	float angle1 = (px.x * 0.7 + px.y) * 0.18;
-	float angle2 = (px.x * 0.3 - px.y * 0.8) * 0.12;
-	float hatch1 = value_noise(vec2(angle1, px.y * 0.05));
-	float hatch2 = value_noise(vec2(angle2, px.x * 0.07));
-	float hatching = hatch1 * 0.6 + hatch2 * 0.4;
+	// ── Directional hatching: one direction only ──
+	float angle = (px.x * 0.7 + px.y) * 0.18;
+	float hatching = value_noise(vec2(angle, px.y * 0.05));
 
-	// ── Pixel-level grain: individual graphite particles ──
-	float pixel_grain = hash12(px * 1.0 + 3.7);
-	// Some pixels are just bare paper (graphite didn't stick)
-	float dropout = step(0.88, pixel_grain);  // ~12% of pixels drop out
+	// ── Pixel dropout: some pixels are bare paper ──
+	float dropout = step(0.88, hash12(px + 3.7));
 
-	// ── Graphite sheen: rare bright flecks ──
-	float flecks = hash12(px * 0.8);
-	float sparkle = smoothstep(0.80, 0.86, flecks);
-
-	// ── Combine: paper grain dominates for that grainy look ──
-	float coverage = paper_grain * 0.45 + graphite * 0.25 + hatching * 0.30;
-
-	// Harsh smoothstep for more contrast between filled/unfilled paper grooves
+	// ── Combine ──
+	float coverage = grain * 0.4 + graphite * 0.3 + hatching * 0.3;
 	coverage = smoothstep(0.08, 0.55, coverage);
+	coverage *= (1.0 - dropout * 0.5);
 
-	// Apply dropouts and sparkle
-	coverage = coverage * (1.0 - dropout * 0.6) * (1.0 - sparkle * 0.4);
+	float final_alpha = 0.35 + coverage * 0.6;
 
-	// Map to final alpha: wider range = grainier appearance
-	float final_alpha = 0.3 + coverage * 0.65;
-
-	// ── Color warmth: graphite isn't pure black, it shifts slightly warm ──
+	// ── Slight warm tint ──
 	vec3 base_color = COLOR.rgb * tex.rgb;
-	float warmth = value_noise(px * 0.08) * 0.08;
-	// Shift toward warm gray slightly (pencil graphite has a slight brown/warm tint)
-	base_color = mix(base_color, base_color * vec3(1.04, 1.01, 0.96), warmth);
+	base_color *= vec3(1.02, 1.005, 0.98);
 
 	COLOR = vec4(base_color, base_alpha * final_alpha);
 }

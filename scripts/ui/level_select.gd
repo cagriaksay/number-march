@@ -13,6 +13,7 @@ const VIEWPORT_H: float = 870.0
 var caveat_bold: Font
 var pencil_material: ShaderMaterial
 var level_buttons: Array = []
+var audio_manager_ref: AudioManager
 var star_labels: Array = []  # Label nodes showing stars below each level number
 
 func _ready() -> void:
@@ -196,4 +197,6 @@ func _draw_grid_lines(canvas: Control) -> void:
 func _on_level_pressed(level_index: int) -> void:
 	# Ensure audio context is active (iOS may block autoplay before first touch)
 	AudioServer.set_bus_mute(0, false)
+	if audio_manager_ref:
+		audio_manager_ref.play_button()
 	level_selected.emit(level_index)

@@ -5,7 +5,7 @@ signal pause_pressed
 signal resume_pressed
 signal restart_pressed
 signal level_select_pressed
-signal fast_forward_toggled(enabled: bool)
+signal fast_forward_changed(speed: float)
 signal settings_changed
 signal edit_level_pressed
 signal edit_save_pressed
@@ -22,7 +22,7 @@ var DEBUG_FPS: bool = false
 var fps_label: Label
 var pause_button: Button
 var ff_button: Button
-var ff_active: bool = false
+var ff_speed_index: int = 0  # 0 = 1x, 1 = 2x, 2 = 3x
 @onready var queue_container: Control = $QueueContainer
 @onready var game_over_panel: PanelContainer = $GameOverPanel
 @onready var game_over_label: Label = $GameOverPanel/VBoxContainer/ResultLabel
@@ -82,7 +82,7 @@ func _ready() -> void:
 		pencil_material.shader = pencil_shader
 		health_label.material = pencil_material
 	# Debug FPS counter
-	DEBUG_FPS = OS.is_debug_build()
+	DEBUG_FPS = OS.has_feature("editor")
 	if DEBUG_FPS:
 		fps_label = Label.new()
 		fps_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -116,7 +116,7 @@ func _apply_font(lbl: Label, size: int, color: Color) -> void:
 func _create_pause_button() -> void:
 	# Fast forward button (left of pause)
 	ff_button = Button.new()
-	ff_button.text = ">>"
+	ff_button.text = ">"
 	ff_button.flat = true
 	ff_button.offset_left = 296.0
 	ff_button.offset_top = 10.0
@@ -159,22 +159,30 @@ func _create_pause_button() -> void:
 	add_child(pause_button)
 
 func _on_ff_pressed() -> void:
-	ff_active = not ff_active
-	if ff_active:
-		ff_button.add_theme_color_override("font_color", Color("#CC2222"))
-		ff_button.add_theme_color_override("font_hover_color", Color("#CC2222"))
-		ff_button.add_theme_color_override("font_pressed_color", Color("#CC2222"))
-		ff_button.add_theme_color_override("font_focus_color", Color("#CC2222"))
-	else:
+	_play_button_sfx()
+	ff_speed_index = (ff_speed_index + 1) % 3
+	_update_ff_button()
+	var speeds := [1.0, 2.0, 3.0]
+	fast_forward_changed.emit(speeds[ff_speed_index])
+
+func _update_ff_button() -> void:
+	var labels := [">", ">>", ">>>"]
+	ff_button.text = labels[ff_speed_index]
+	if ff_speed_index == 0:
 		ff_button.add_theme_color_override("font_color", Color("#555555"))
 		ff_button.add_theme_color_override("font_hover_color", Color("#333333"))
 		ff_button.add_theme_color_override("font_pressed_color", Color("#333333"))
 		ff_button.add_theme_color_override("font_focus_color", Color("#555555"))
-	fast_forward_toggled.emit(ff_active)
+	else:
+		ff_button.add_theme_color_override("font_color", Color("#CC2222"))
+		ff_button.add_theme_color_override("font_hover_color", Color("#CC2222"))
+		ff_button.add_theme_color_override("font_pressed_color", Color("#CC2222"))
+		ff_button.add_theme_color_override("font_focus_color", Color("#CC2222"))
 
 func _on_pause_pressed() -> void:
 	if is_paused:
 		return
+	_play_button_sfx()
 	show_pause()
 
 # ─── Pause Popup (Tilted Paper) ─────────────────────────────────
@@ -437,10 +445,16 @@ func hide_pause() -> void:
 	ff_button.visible = true
 	resume_pressed.emit()
 
+func _play_button_sfx() -> void:
+	if audio_manager_ref:
+		audio_manager_ref.play_button()
+
 func _on_resume_pressed() -> void:
+	_play_button_sfx()
 	hide_pause()
 
 func _on_restart_pressed() -> void:
+	_play_button_sfx()
 	is_paused = false
 	pause_overlay.visible = false
 	pause_button.visible = true
@@ -448,6 +462,7 @@ func _on_restart_pressed() -> void:
 	restart_pressed.emit()
 
 func _on_level_select_pressed() -> void:
+	_play_button_sfx()
 	is_paused = false
 	pause_overlay.visible = false
 	pause_button.visible = true
@@ -455,6 +470,7 @@ func _on_level_select_pressed() -> void:
 	level_select_pressed.emit()
 
 func _on_edit_level_pressed() -> void:
+	_play_button_sfx()
 	is_paused = false
 	pause_overlay.visible = false
 	pause_button.visible = false
@@ -629,9 +645,8 @@ func hide_game_over() -> void:
 	pause_button.visible = true
 	ff_button.visible = true
 	# Reset fast forward state
-	ff_active = false
-	ff_button.add_theme_color_override("font_color", Color("#555555"))
-	ff_button.add_theme_color_override("font_hover_color", Color("#333333"))
+	ff_speed_index = 0
+	_update_ff_button()
 	# Clear ALL queue children (including orphaned departing labels with active tweens)
 	for child in queue_container.get_children():
 		child.queue_free()
@@ -667,12 +682,12 @@ func show_music_name(display_name: String) -> void:
 	# Kill any existing tween
 	if music_name_tween and music_name_tween.is_valid():
 		music_name_tween.kill()
-	# Fade in, hold, fade out
+	# Fade in, hold, then dim to a faint gray (stays visible)
 	music_name_label.modulate.a = 0.0
 	music_name_tween = music_name_label.create_tween()
 	music_name_tween.tween_property(music_name_label, "modulate:a", 1.0, 0.8).set_ease(Tween.EASE_OUT)
 	music_name_tween.tween_interval(4.0)
-	music_name_tween.tween_property(music_name_label, "modulate:a", 0.0, 1.2).set_ease(Tween.EASE_IN)
+	music_name_tween.tween_property(music_name_label, "modulate:a", 0.25, 1.2).set_ease(Tween.EASE_IN)
 
 # ─── Edit Mode Overlay ──────────────────────────────────────────
 
