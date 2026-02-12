@@ -45,6 +45,7 @@ func _ready() -> void:
 	hud.restart_pressed.connect(_on_restart)
 	hud.level_select_pressed.connect(_on_show_level_select)
 	hud.fast_forward_toggled.connect(_on_fast_forward)
+	hud.settings_changed.connect(save_settings)
 
 	# Create level select screen
 	level_select = LevelSelect.new()
@@ -56,8 +57,9 @@ func _ready() -> void:
 	audio_manager.music_changed.connect(_on_music_changed)
 	add_child(audio_manager)
 
-	# Pass audio manager to game board for SFX
+	# Pass audio manager references
 	game_board.audio_manager = audio_manager
+	hud.audio_manager_ref = audio_manager
 
 	# Load saved progress
 	_load_progress()
@@ -102,6 +104,7 @@ func _on_game_over() -> void:
 	hud.show_game_over(0, false)
 	audio_manager.stop_music(1.5)
 	audio_manager.play_game_over()
+	audio_manager.vibrate(200)
 
 func _on_level_complete(stars: int) -> void:
 	tick_engine.stop()
@@ -118,9 +121,11 @@ func _on_level_complete(stars: int) -> void:
 	hud.show_game_over(stars, true)
 	audio_manager.stop_music(1.5)
 	audio_manager.play_level_complete()
+	audio_manager.vibrate(100)
 
 func _on_number_escaped(value: int) -> void:
 	audio_manager.play_escaped()
+	audio_manager.vibrate(80)
 
 func _on_number_solved(_value: int) -> void:
 	audio_manager.play_solved()
@@ -148,6 +153,7 @@ func _on_restart() -> void:
 	Engine.time_scale = 1.0
 	if current_level_index >= 0:
 		_load_level(_create_level(current_level_index), current_level_index)
+	audio_manager.play_gameplay_music()
 
 # ─── Retry (from game over panel) ───────────────────────────────
 
@@ -157,6 +163,7 @@ func _on_retry() -> void:
 		_load_level(_create_level(current_level_index), current_level_index)
 	else:
 		_load_level(_create_level(0), 0)
+	audio_manager.play_gameplay_music()
 
 # ─── Level Select ────────────────────────────────────────────────
 
@@ -354,6 +361,11 @@ func _save_progress() -> void:
 	var data: Dictionary = {
 		"level_stars": {},
 		"level_scores": {},
+		"settings": {
+			"music": audio_manager.music_enabled,
+			"sfx": audio_manager.sfx_enabled,
+			"vibration": audio_manager.vibration_enabled,
+		},
 	}
 	for key in level_stars:
 		data["level_stars"][str(key)] = level_stars[key]
@@ -363,6 +375,10 @@ func _save_progress() -> void:
 	if file:
 		file.store_string(JSON.stringify(data))
 		file.close()
+
+func save_settings() -> void:
+	# Save just settings without needing a level complete
+	_save_progress()
 
 func _load_progress() -> void:
 	if not FileAccess.file_exists(SAVE_PATH):
@@ -383,3 +399,11 @@ func _load_progress() -> void:
 		if data.has("level_scores"):
 			for key in data["level_scores"]:
 				level_scores[int(key)] = int(data["level_scores"][key])
+		if data.has("settings"):
+			var s = data["settings"]
+			if s.has("music"):
+				audio_manager.music_enabled = bool(s["music"])
+			if s.has("sfx"):
+				audio_manager.sfx_enabled = bool(s["sfx"])
+			if s.has("vibration"):
+				audio_manager.vibration_enabled = bool(s["vibration"])

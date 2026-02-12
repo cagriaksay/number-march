@@ -341,6 +341,7 @@ func _try_place_tower(cell: Vector2i) -> void:
 	place_tower(cell)
 	if audio_manager:
 		audio_manager.play_tower_place()
+		audio_manager.vibrate(30)
 
 func _try_upgrade_tower(cell: Vector2i) -> void:
 	var tower = get_tower_at(cell)
@@ -353,6 +354,7 @@ func _try_upgrade_tower(cell: Vector2i) -> void:
 	tower.increment()
 	if audio_manager:
 		audio_manager.play_tower_place()
+		audio_manager.vibrate(20)
 
 func _flash_invalid(cell: Vector2i) -> void:
 	# Visual feedback for invalid placement

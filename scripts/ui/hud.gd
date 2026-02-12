@@ -6,6 +6,7 @@ signal resume_pressed
 signal restart_pressed
 signal level_select_pressed
 signal fast_forward_toggled(enabled: bool)
+signal settings_changed
 
 var caveat_font: Font
 var caveat_bold: Font
@@ -29,6 +30,12 @@ var ff_active: bool = false
 var pause_overlay: Control
 var pause_paper: Control
 var is_paused: bool = false
+
+# Toggle buttons on pause menu
+var music_toggle: Button
+var sfx_toggle: Button
+var vibration_toggle: Button
+var audio_manager_ref: AudioManager  # set by main
 
 # Music name display
 var music_name_label: Label
@@ -185,30 +192,30 @@ func _create_pause_popup() -> void:
 
 	# Tilted paper container
 	pause_paper = Control.new()
-	pause_paper.size = Vector2(220, 260)
-	pause_paper.position = Vector2(85, 260)
-	pause_paper.pivot_offset = Vector2(110, 130)
+	pause_paper.size = Vector2(220, 340)
+	pause_paper.position = Vector2(85, 230)
+	pause_paper.pivot_offset = Vector2(110, 170)
 	pause_paper.rotation = deg_to_rad(-3.5)
 	pause_paper.mouse_filter = Control.MOUSE_FILTER_STOP
 	pause_overlay.add_child(pause_paper)
 
 	# Paper background (off-white with shadow)
 	var shadow := ColorRect.new()
-	shadow.size = Vector2(220, 260)
+	shadow.size = Vector2(220, 340)
 	shadow.position = Vector2(4, 4)
 	shadow.color = Color(0.0, 0.0, 0.0, 0.15)
 	shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pause_paper.add_child(shadow)
 
 	var paper_bg := ColorRect.new()
-	paper_bg.size = Vector2(220, 260)
+	paper_bg.size = Vector2(220, 340)
 	paper_bg.color = Color(0.98, 0.96, 0.90, 1.0)
 	paper_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pause_paper.add_child(paper_bg)
 
 	# Faint grid lines on paper
 	var line_container := Control.new()
-	line_container.size = Vector2(220, 260)
+	line_container.size = Vector2(220, 340)
 	line_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pause_paper.add_child(line_container)
 
@@ -254,6 +261,26 @@ func _create_pause_popup() -> void:
 	levels_btn.pressed.connect(_on_level_select_pressed)
 	pause_paper.add_child(levels_btn)
 
+	# ── Toggle row: Music / Sound / Vibrate ──
+	var toggle_y: float = 252.0
+	var toggle_w: float = 58.0
+	var toggle_h: float = 34.0
+	var toggle_gap: float = 6.0
+	var total_w: float = toggle_w * 3.0 + toggle_gap * 2.0
+	var toggle_x: float = (220.0 - total_w) / 2.0
+
+	music_toggle = _create_toggle_button("Music", Vector2(toggle_x, toggle_y), Vector2(toggle_w, toggle_h))
+	music_toggle.pressed.connect(_on_music_toggle)
+	pause_paper.add_child(music_toggle)
+
+	sfx_toggle = _create_toggle_button("Sound", Vector2(toggle_x + toggle_w + toggle_gap, toggle_y), Vector2(toggle_w, toggle_h))
+	sfx_toggle.pressed.connect(_on_sfx_toggle)
+	pause_paper.add_child(sfx_toggle)
+
+	vibration_toggle = _create_toggle_button("Vibrate", Vector2(toggle_x + (toggle_w + toggle_gap) * 2.0, toggle_y), Vector2(toggle_w, toggle_h))
+	vibration_toggle.pressed.connect(_on_vibration_toggle)
+	pause_paper.add_child(vibration_toggle)
+
 func _style_paper_button(btn: Button) -> void:
 	if caveat_bold:
 		btn.add_theme_font_override("font", caveat_bold)
@@ -281,11 +308,85 @@ func _style_paper_button(btn: Button) -> void:
 	btn.add_theme_stylebox_override("normal", normal_style)
 	btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 
+func _create_toggle_button(text: String, pos: Vector2, sz: Vector2) -> Button:
+	var btn := Button.new()
+	btn.text = text
+	btn.flat = true
+	btn.size = sz
+	btn.position = pos
+	if caveat_bold:
+		btn.add_theme_font_override("font", caveat_bold)
+	btn.add_theme_font_size_override("font_size", 13)
+	btn.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_set_toggle_visual(btn, true)
+	return btn
+
+func _make_toggle_style(enabled: bool) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.corner_radius_top_left = 3
+	style.corner_radius_top_right = 3
+	style.corner_radius_bottom_left = 3
+	style.corner_radius_bottom_right = 3
+	style.border_width_left = 1
+	style.border_width_right = 1
+	style.border_width_top = 1
+	style.border_width_bottom = 1
+	if enabled:
+		style.bg_color = Color(0.95, 0.93, 0.87, 1.0)
+		style.border_color = Color(0.53, 0.53, 0.53, 1.0)
+	else:
+		style.bg_color = Color(0.90, 0.88, 0.84, 1.0)
+		style.border_color = Color(0.73, 0.73, 0.73, 1.0)
+	return style
+
+func _set_toggle_visual(btn: Button, enabled: bool) -> void:
+	var style := _make_toggle_style(enabled)
+	btn.add_theme_stylebox_override("normal", style)
+	btn.add_theme_stylebox_override("hover", style)
+	btn.add_theme_stylebox_override("pressed", style)
+	btn.add_theme_stylebox_override("focus", style)
+	var col: Color
+	if enabled:
+		col = Color(0.27, 0.27, 0.27, 1.0)
+	else:
+		col = Color(0.73, 0.73, 0.73, 1.0)
+	btn.add_theme_color_override("font_color", col)
+	btn.add_theme_color_override("font_hover_color", col)
+	btn.add_theme_color_override("font_pressed_color", col)
+	btn.add_theme_color_override("font_focus_color", col)
+	btn.add_theme_color_override("font_disabled_color", col)
+
+func _on_music_toggle() -> void:
+	if not audio_manager_ref:
+		return
+	audio_manager_ref.set_music_enabled(not audio_manager_ref.music_enabled)
+	_set_toggle_visual(music_toggle, audio_manager_ref.music_enabled)
+	settings_changed.emit()
+
+func _on_sfx_toggle() -> void:
+	if not audio_manager_ref:
+		return
+	audio_manager_ref.set_sfx_enabled(not audio_manager_ref.sfx_enabled)
+	_set_toggle_visual(sfx_toggle, audio_manager_ref.sfx_enabled)
+	settings_changed.emit()
+
+func _on_vibration_toggle() -> void:
+	if not audio_manager_ref:
+		return
+	audio_manager_ref.set_vibration_enabled(not audio_manager_ref.vibration_enabled)
+	_set_toggle_visual(vibration_toggle, audio_manager_ref.vibration_enabled)
+	settings_changed.emit()
+
 func show_pause() -> void:
 	is_paused = true
 	pause_overlay.visible = true
 	pause_button.visible = false
 	ff_button.visible = false
+	# Sync toggle visuals with current state
+	if audio_manager_ref:
+		_set_toggle_visual(music_toggle, audio_manager_ref.music_enabled)
+		_set_toggle_visual(sfx_toggle, audio_manager_ref.sfx_enabled)
+		_set_toggle_visual(vibration_toggle, audio_manager_ref.vibration_enabled)
 	# Animate paper in
 	pause_paper.scale = Vector2(0.8, 0.8)
 	pause_paper.modulate.a = 0.0

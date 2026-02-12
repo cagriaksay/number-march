@@ -18,6 +18,7 @@ var music_display_names: Dictionary = {}  # filename (no ext) -> "Display Name"
 var sfx_clips: Dictionary = {}  # sfx name -> AudioStream
 
 var current_music_key: String = ""
+var intended_music_key: String = ""  # tracks what should be playing (survives stop/mute)
 
 # Gameplay music list (shuffled per session)
 var gameplay_tracks: Array[String] = []
@@ -26,6 +27,11 @@ var gameplay_index: int = 0
 # Volume (linear)
 const MUSIC_VOLUME_DB: float = -8.0
 const SFX_VOLUME_DB: float = -4.0
+
+# Toggles
+var music_enabled: bool = true
+var sfx_enabled: bool = true
+var vibration_enabled: bool = true
 
 func _ready() -> void:
 	_create_players()
@@ -109,6 +115,10 @@ func play_music(track_key: String, crossfade_duration: float = 1.0) -> void:
 		return
 	if not music_tracks.has(track_key):
 		return
+	intended_music_key = track_key
+	if not music_enabled:
+		current_music_key = track_key
+		return
 
 	current_music_key = track_key
 	var stream: AudioStream = music_tracks[track_key]
@@ -183,6 +193,8 @@ func _on_music_finished() -> void:
 # ─── SFX Playback ───────────────────────────────────────────────
 
 func play_sfx(sfx_name: String) -> void:
+	if not sfx_enabled:
+		return
 	if not sfx_clips.has(sfx_name):
 		return
 	var player := _get_free_sfx_player()
@@ -219,3 +231,27 @@ func play_escaped() -> void:
 
 func play_button() -> void:
 	play_sfx("sfx_button")
+
+# ─── Toggles ────────────────────────────────────────────────────
+
+func set_music_enabled(enabled: bool) -> void:
+	music_enabled = enabled
+	if not enabled:
+		stop_music(0.3)
+	else:
+		# Re-enable: replay the intended track
+		if intended_music_key != "":
+			current_music_key = ""
+			play_music(intended_music_key, 0.5)
+
+func set_sfx_enabled(enabled: bool) -> void:
+	sfx_enabled = enabled
+
+func set_vibration_enabled(enabled: bool) -> void:
+	vibration_enabled = enabled
+
+# ─── Vibration ──────────────────────────────────────────────────
+
+func vibrate(duration_ms: int = 50) -> void:
+	if vibration_enabled:
+		Input.vibrate_handheld(duration_ms)

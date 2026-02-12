@@ -155,6 +155,7 @@ func _check_adjacent_towers() -> void:
 			board.health_manager.heal(1)
 			if board.audio_manager:
 				board.audio_manager.play_division()
+				board.audio_manager.vibrate(15)
 			_play_divide_effect(old_value)
 			_update_label()
 			if value <= 1:
