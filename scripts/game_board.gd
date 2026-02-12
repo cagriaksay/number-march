@@ -460,6 +460,22 @@ func _edit_move_marker(cell: Vector2i, marker_type: int) -> void:
 	_check_edit_dirty()
 	queue_redraw()
 
+func edit_clear() -> void:
+	# Clear all walls and towers, keep start/end, make everything else path
+	for x in COLS:
+		for y in ROWS:
+			if grid[x][y] == CellType.WALL:
+				grid[x][y] = CellType.PATH
+			elif grid[x][y] == CellType.TOWER:
+				if towers.has(Vector2i(x, y)):
+					var tower_node = towers[Vector2i(x, y)]
+					tower_node.queue_free()
+					towers.erase(Vector2i(x, y))
+				grid[x][y] = CellType.PATH
+	_setup_astar()
+	_check_edit_dirty()
+	queue_redraw()
+
 func _check_edit_dirty() -> void:
 	var was_dirty := _edit_dirty
 	_edit_dirty = get_grid_layout() != _edit_saved_layout

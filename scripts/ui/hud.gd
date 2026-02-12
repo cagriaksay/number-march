@@ -9,6 +9,7 @@ signal fast_forward_toggled(enabled: bool)
 signal settings_changed
 signal edit_level_pressed
 signal edit_save_pressed
+signal edit_clear_pressed
 signal edit_done_pressed
 
 var caveat_font: Font
@@ -705,11 +706,20 @@ func _create_edit_bar() -> void:
 		lbl.material = pencil_material
 	edit_bar.add_child(lbl)
 
+	var clear_btn := Button.new()
+	clear_btn.text = "Clear"
+	clear_btn.flat = true
+	clear_btn.size = Vector2(65, 36)
+	clear_btn.position = Vector2(150, 7)
+	_style_paper_button(clear_btn)
+	clear_btn.pressed.connect(func(): edit_clear_pressed.emit())
+	edit_bar.add_child(clear_btn)
+
 	_edit_save_btn = Button.new()
 	_edit_save_btn.text = "Save"
 	_edit_save_btn.flat = true
-	_edit_save_btn.size = Vector2(70, 36)
-	_edit_save_btn.position = Vector2(220, 7)
+	_edit_save_btn.size = Vector2(65, 36)
+	_edit_save_btn.position = Vector2(225, 7)
 	_style_paper_button(_edit_save_btn)
 	_edit_save_btn.pressed.connect(func(): edit_save_pressed.emit())
 	edit_bar.add_child(_edit_save_btn)
@@ -717,7 +727,7 @@ func _create_edit_bar() -> void:
 	var done_btn := Button.new()
 	done_btn.text = "Done"
 	done_btn.flat = true
-	done_btn.size = Vector2(70, 36)
+	done_btn.size = Vector2(65, 36)
 	done_btn.position = Vector2(305, 7)
 	_style_paper_button(done_btn)
 	done_btn.pressed.connect(func(): edit_done_pressed.emit())

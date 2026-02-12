@@ -49,6 +49,7 @@ func _ready() -> void:
 	hud.settings_changed.connect(save_settings)
 	hud.edit_level_pressed.connect(_on_edit_level)
 	hud.edit_save_pressed.connect(_on_edit_save)
+	hud.edit_clear_pressed.connect(_on_edit_clear)
 	hud.edit_done_pressed.connect(_on_edit_done)
 
 	# Create level select screen
@@ -201,6 +202,9 @@ func _on_edit_save() -> void:
 	data.tutorial_hints = current_level.tutorial_hints
 	_save_level_file(current_level_index, data)
 	game_board.mark_edit_saved()
+
+func _on_edit_clear() -> void:
+	game_board.edit_clear()
 
 func _on_edit_dirty_changed(dirty: bool) -> void:
 	hud.update_edit_save_enabled(dirty)
