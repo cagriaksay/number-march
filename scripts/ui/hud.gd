@@ -309,12 +309,14 @@ func _on_restart_pressed() -> void:
 	is_paused = false
 	pause_overlay.visible = false
 	pause_button.visible = true
+	ff_button.visible = true
 	restart_pressed.emit()
 
 func _on_level_select_pressed() -> void:
 	is_paused = false
 	pause_overlay.visible = false
 	pause_button.visible = true
+	ff_button.visible = true
 	level_select_pressed.emit()
 
 func update_health(current: int, _max_hp: int) -> void:
@@ -393,6 +395,9 @@ func _process(delta: float) -> void:
 	# Continuously scroll left (unless paused by blocked spawn)
 	if not queue_paused:
 		queue_scroll += delta * queue_scroll_speed
+	# Clamp so scroll never exceeds one slot (prevents leftward drift over time)
+	if queue_scroll > QUEUE_SLOT_WIDTH:
+		queue_scroll = QUEUE_SLOT_WIDTH
 	# Waddle timer
 	queue_waddle_time += delta * QUEUE_WADDLE_SPEED
 	# Position each label: offset by +1 slot so label 0 scrolls from SLOT_WIDTH to 0
@@ -400,7 +405,7 @@ func _process(delta: float) -> void:
 		var x_pos: float = (i + 1) * QUEUE_SLOT_WIDTH - queue_scroll
 		queue_labels[i].position.x = x_pos
 		_style_queue_label(queue_labels[i], i, x_pos)
-		# South Park waddle: each label offset in phase so they alternate
+		# South Park waddle: tilt and bounce
 		var phase: float = queue_waddle_time + i * 0.5
 		var tilt: float = sin(phase * TAU) * QUEUE_TILT
 		var bounce: float = abs(sin(phase * TAU)) * QUEUE_BOUNCE

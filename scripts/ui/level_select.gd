@@ -152,7 +152,7 @@ func _build_ui() -> void:
 		add_child(stars_lbl)
 		star_labels.append(stars_lbl)
 
-func update_stars(level_stars: Dictionary) -> void:
+func update_stars(level_stars: Dictionary, level_scores: Dictionary = {}) -> void:
 	for i in TOTAL_LEVELS:
 		var stars: int = level_stars.get(i, 0)
 		# Level is unlocked if it's the first one, or the previous level has been completed
@@ -194,4 +194,6 @@ func _draw_grid_lines(canvas: Control) -> void:
 		canvas.draw_line(Vector2(x, 0), Vector2(x, VIEWPORT_H), grid_color, 1.0)
 
 func _on_level_pressed(level_index: int) -> void:
+	# Ensure audio context is active (iOS may block autoplay before first touch)
+	AudioServer.set_bus_mute(0, false)
 	level_selected.emit(level_index)

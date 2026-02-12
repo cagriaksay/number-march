@@ -9,6 +9,9 @@ extends Node2D
 var current_level: LevelData
 var current_level_index: int = -1  # -1 = no level loaded
 var level_stars: Dictionary = {}  # level_index -> stars (0-3)
+var level_scores: Dictionary = {}  # level_index -> best remaining HP
+
+const SAVE_PATH: String = "user://save_data.json"
 
 # Level select (created in code)
 var level_select: LevelSelect
@@ -56,6 +59,9 @@ func _ready() -> void:
 	# Pass audio manager to game board for SFX
 	game_board.audio_manager = audio_manager
 
+	# Load saved progress
+	_load_progress()
+
 	# Start on level select
 	_show_level_select()
 
@@ -94,16 +100,23 @@ func _on_health_changed(current: int, max_hp: int) -> void:
 func _on_game_over() -> void:
 	tick_engine.stop()
 	hud.show_game_over(0, false)
+	audio_manager.stop_music(1.5)
 	audio_manager.play_game_over()
 
 func _on_level_complete(stars: int) -> void:
 	tick_engine.stop()
-	# Save best stars for this level
+	# Save best stars and score for this level
 	if current_level_index >= 0:
-		var prev: int = level_stars.get(current_level_index, 0)
-		if stars > prev:
+		var prev_stars: int = level_stars.get(current_level_index, 0)
+		if stars > prev_stars:
 			level_stars[current_level_index] = stars
+		var current_score: int = health_manager.current_hp
+		var prev_score: int = level_scores.get(current_level_index, 0)
+		if current_score > prev_score:
+			level_scores[current_level_index] = current_score
+		_save_progress()
 	hud.show_game_over(stars, true)
+	audio_manager.stop_music(1.5)
 	audio_manager.play_level_complete()
 
 func _on_number_escaped(value: int) -> void:
@@ -154,7 +167,7 @@ func _on_show_level_select() -> void:
 	_show_level_select()
 
 func _show_level_select() -> void:
-	level_select.update_stars(level_stars)
+	level_select.update_stars(level_stars, level_scores)
 	level_select.visible = true
 	hud.visible = false
 	game_board.visible = false
@@ -334,3 +347,39 @@ func _bfs_path_exists(grid: Array, start: Vector2i, end_pos: Vector2i, cols: int
 					visited[n] = true
 					queue.append(n)
 	return false
+
+# ─── Save / Load Progress ─────────────────────────────────────────
+
+func _save_progress() -> void:
+	var data: Dictionary = {
+		"level_stars": {},
+		"level_scores": {},
+	}
+	for key in level_stars:
+		data["level_stars"][str(key)] = level_stars[key]
+	for key in level_scores:
+		data["level_scores"][str(key)] = level_scores[key]
+	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	if file:
+		file.store_string(JSON.stringify(data))
+		file.close()
+
+func _load_progress() -> void:
+	if not FileAccess.file_exists(SAVE_PATH):
+		return
+	var file := FileAccess.open(SAVE_PATH, FileAccess.READ)
+	if not file:
+		return
+	var text: String = file.get_as_text()
+	file.close()
+	var json := JSON.new()
+	if json.parse(text) != OK:
+		return
+	var data = json.data
+	if data is Dictionary:
+		if data.has("level_stars"):
+			for key in data["level_stars"]:
+				level_stars[int(key)] = int(data["level_stars"][key])
+		if data.has("level_scores"):
+			for key in data["level_scores"]:
+				level_scores[int(key)] = int(data["level_scores"][key])
