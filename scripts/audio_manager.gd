@@ -62,17 +62,27 @@ func _create_players() -> void:
 
 func _load_music() -> void:
 	var music_files: Array[Array] = [
-		["hallway_between_bells", "Hallway Between Bells"],
+		["pencil_tap_waltz", "Pencil Tap Waltz"],
+		["scribble_sprint", "Scribble Sprint"],
+		["doodle_dash", "Doodle Dash"],
+		["graph_paper_groove", "Graph Paper Groove"],
+		["grid_dance", "Grid Dance"],
+		["eraser_dust", "Eraser Dust"],
+		["clean_slate", "Clean Slate"],
+		["chalk_talk", "Chalk Talk"],
+		["margin_notes", "Margin Notes"],
+		["pop_quiz_polka", "Pop Quiz Polka"],
+		["test_time_tango", "Test Time Tango"],
+		["notebook_shuffle", "Notebook Shuffle"],
+		["page_flip", "Page Flip"],
+		["recess_bell", "Recess Bell"],
+		["playground_anthem", "Playground Anthem"],
+		["divide_and_conquer", "Divide & Conquer"],
+		["equation_breaker", "Equation Breaker"],
+		["last_page_dash", "Last Page Dash"],
+		["final_answer", "Final Answer"],
 		["chalkboard_rebels", "Chalkboard Rebels"],
-		["detention_escape", "Detention Escape"],
-		["back_row_breakout", "Back Row Breakout"],
-		["homework_heist", "Homework Heist"],
 		["neon_gym_class_calculus", "Neon Gym Class Calculus"],
-		["golden_hour_loop", "Golden Hour Loop"],
-		["final_boss_pop_quiz", "Final Boss Pop Quiz"],
-		["cafeteria_code_red", "Cafeteria Code Red"],
-		["sirens_in_the_arcade", "Sirens In The Arcade"],
-		["slow_motion_hallway_hero", "Slow Motion Hallway Hero"],
 	]
 	for entry in music_files:
 		var key: String = entry[0]
@@ -103,7 +113,7 @@ func _load_sfx() -> void:
 func _build_gameplay_playlist() -> void:
 	gameplay_tracks = []
 	for key in music_tracks.keys():
-		if key != "hallway_between_bells":  # exclude level select track
+		if key != "pencil_tap_waltz":  # exclude level select track
 			gameplay_tracks.append(key)
 	gameplay_tracks.shuffle()
 	gameplay_index = 0
@@ -169,7 +179,7 @@ func stop_music(fade_duration: float = 0.5) -> void:
 		tween.tween_callback(music_player_b.stop).set_delay(fade_duration)
 
 func play_level_select_music() -> void:
-	play_music("hallway_between_bells")
+	play_music("pencil_tap_waltz")
 
 func play_gameplay_music() -> void:
 	if gameplay_tracks.is_empty():
@@ -181,9 +191,9 @@ func play_gameplay_music() -> void:
 
 func _on_music_finished() -> void:
 	# Auto-advance to next gameplay track
-	if current_music_key == "hallway_between_bells":
+	if current_music_key == "pencil_tap_waltz":
 		# Level select loops
-		play_music("hallway_between_bells")
+		play_music("pencil_tap_waltz")
 		return
 	gameplay_index = (gameplay_index + 1) % gameplay_tracks.size()
 	var next_key: String = gameplay_tracks[gameplay_index]
