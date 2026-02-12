@@ -1,0 +1,16 @@
+# Godot 4+ specific ignores
+.godot/
+.import/
+
+# Exported builds
+ios/
+android/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor backups
+*.swp
+*.swo
+*~
