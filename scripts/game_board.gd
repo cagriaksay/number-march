@@ -618,36 +618,28 @@ func _draw_cells() -> void:
 				CellType.WALL:
 					_draw_wall_cell(rect, x, y)
 				CellType.START:
-					_draw_colored_shading(rect, x, y, Color(0.2, 0.55, 0.25, 0.35), Color(0.25, 0.6, 0.3, 0.25))
 					_draw_play_button(rect, x, y)
 				CellType.END:
-					_draw_colored_shading(rect, x, y, Color(0.7, 0.2, 0.2, 0.35), Color(0.75, 0.25, 0.2, 0.25))
 					_draw_stop_square(rect, x, y)
 
 func _draw_play_button(rect: Rect2, cx: int, cy: int) -> void:
 	var h := _cell_hash(cx, cy)
 	var center := rect.position + rect.size / 2.0
-	var s := rect.size.x * 0.3  # half-size of triangle
-	var col := Color(0.2, 0.5, 0.2, 0.6)
+	var radius := rect.size.x * 0.5
+	var col := Color(0.2, 0.5, 0.2, 0.5)
+	var outline_col := Color(0.15, 0.4, 0.15, 0.7)
 
-	# Play triangle pointing right, with slight wobble
-	var angles := [deg_to_rad(-150.0), deg_to_rad(0.0), deg_to_rad(150.0)]
+	# Draw wobbly filled circle
+	var segments := 24
 	var pts: PackedVector2Array = []
-	for i in 3:
-		var angle: float = angles[i]
-		# Wobble each vertex a bit
-		var wobble_x := (fmod(float(h + i * 3917), 5.0) - 2.5) * 1.2
-		var wobble_y := (fmod(float(h + i * 7213), 5.0) - 2.5) * 1.2
-		var r: float = s * 0.85
-		if i == 1:
-			r = s
-		pts.append(center + Vector2(cos(angle) * r + wobble_x, sin(angle) * r + wobble_y))
-
-	# Draw filled triangle
+	for i in segments:
+		var angle := float(i) / float(segments) * TAU
+		var wobble := (fmod(float(h + i * 3917), 5.0) - 2.5) * 0.8
+		var r := radius + wobble
+		pts.append(center + Vector2(cos(angle) * r, sin(angle) * r))
 	draw_colored_polygon(pts, col)
 
-	# Draw wobbly outline strokes
-	var outline_col := Color(0.15, 0.4, 0.15, 0.7)
+	# Draw wobbly outline
 	for i in pts.size():
 		var from := pts[i]
 		var to := pts[(i + 1) % pts.size()]

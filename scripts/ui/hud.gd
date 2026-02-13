@@ -85,11 +85,13 @@ func _ready() -> void:
 	DEBUG_FPS = OS.has_feature("editor")
 	if DEBUG_FPS:
 		fps_label = Label.new()
-		fps_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		fps_label.offset_left = 240.0
-		fps_label.offset_top = 12.0
-		fps_label.offset_right = 330.0
-		fps_label.offset_bottom = 30.0
+		fps_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		fps_label.anchor_left = 0.5
+		fps_label.anchor_right = 0.5
+		fps_label.offset_left = -30.0
+		fps_label.offset_top = 4.0
+		fps_label.offset_right = 30.0
+		fps_label.offset_bottom = 22.0
 		fps_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		fps_label.add_theme_font_size_override("font_size", 11)
 		fps_label.add_theme_color_override("font_color", Color("#999999"))
