@@ -13,11 +13,11 @@
 		"...#...#..",
 		"..#.....#.",
 		".#.......#",
-		"#.........",
+		"#........#",
+		"#........#",
+		"#........#",
+		".#.......#",
 		"..#.....#.",
-		"#..#...#..",
-		".#..#.#..#",
-		"..#..#..#.",
 		"...#...#..",
 		"....#E#..."
 	],
@@ -66,5 +66,13 @@
 	"starting_hp": 120,
 	"tick_speed": 1.5,
 	"ticks_between_spawns": 3,
-	"tutorial_hints": []
+	"tutorial_hints": [
+		{
+			"text": "Place towers\nstrategically\nto make\nnumbers\nmarch\nlonger!",
+			"x": 0,
+			"y": 2,
+			"width": 4,
+			"height": 6
+		}
+	]
 }

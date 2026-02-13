@@ -13,7 +13,7 @@ var level_scores: Dictionary = {}  # level_index -> best remaining HP
 
 const SAVE_PATH: String = "user://save_data.json"
 
-# Level select (created in code)
+# Level sel\nect (created in code)
 var level_select: LevelSelect
 
 # Audio
