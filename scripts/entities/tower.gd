@@ -1,7 +1,7 @@
 class_name Tower
 extends Node2D
 
-var value: int = 1
+var value: int = 2
 var grid_pos: Vector2i = Vector2i.ZERO
 var cell_size: float = 39.0
 

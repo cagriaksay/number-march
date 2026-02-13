@@ -31,28 +31,28 @@
 	"tutorial_hints": [
 		{
 			"height": 3.0,
-			"text": "add a tower anywhere\nby tapping!",
+			"text": "Add a tower anywhere\nby tapping!",
 			"width": 8.0,
 			"x": 1.0,
 			"y": 0.0
 		},
 		{
 			"height": 2.0,
-			"text": "tap more to increase\na tower's value.",
+			"text": "Tap more to increase\na tower's value.",
 			"width": 7.0,
 			"x": 0.0,
 			"y": 5.0
 		},
 		{
 			"height": 3.0,
-			"text": "towers lose value\nwhen they divide\na number.",
+			"text": "Towers lose value\nwhen they divide\na number.",
 			"width": 7.0,
 			"x": 0.0,
 			"y": 11.0
 		},
 		{
 			"height": 3.0,
-			"text": "towers cost points,\nso use them wisely!",
+			"text": "Towers cost points,\nso use them wisely!",
 			"width": 7.0,
 			"x": 0.0,
 			"y": 17.0

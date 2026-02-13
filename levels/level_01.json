@@ -32,14 +32,14 @@
 	"tutorial_hints": [
 		{
 			"height": 3.0,
-			"text": "these are walls,\nnumbers can't\npass through them!",
+			"text": "These are walls,\nnumbers can't\npass through them!",
 			"width": 8.0,
 			"x": 1.0,
 			"y": 0.0
 		},
 		{
 			"height": 3.0,
-			"text": "this is a tower!",
+			"text": "This is a tower!",
 			"width": 8.0,
 			"x": 0.0,
 			"y": 8.0
