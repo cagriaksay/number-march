@@ -72,23 +72,33 @@ func _draw() -> void:
 	var col: Color = color_circle if value >= 2 else color_inert
 	col.a = alpha
 
-	# Draw slightly imperfect circle (multiple arcs with slight offsets)
-	var segments: int = 32
+	# Hand-drawn rounded rectangle
+	var half := cell_size * 0.38
+	var corner_r := half * 0.3
+	var segments_per_corner := 6
 	var points: PackedVector2Array = PackedVector2Array()
-	for i in range(segments + 1):
-		var angle: float = (float(i) / float(segments)) * TAU
-		# Base wobble for hand-drawn feel
-		var wobble: float = sin(angle * 5.0) * 0.8 + cos(angle * 3.0) * 0.5
-		# Prominent flat side — rotates per tower
-		var dent_angle: float = angle - circle_rotation
-		var dent_cos: float = cos(dent_angle)
-		# Sharper dent: only activate in a narrow arc, then push hard
-		var dent: float = maxf(0.0, dent_cos * 2.0 - 0.6) * 4.0
-		var r: float = radius + wobble - dent
-		points.append(Vector2(cos(angle) * r, sin(angle) * r))
 
-	for i in range(segments):
-		draw_line(points[i], points[i + 1], col, 1.8, true)
+	# Build rounded rect corners: top-left, top-right, bottom-right, bottom-left
+	var corners := [
+		[Vector2(-half, -half), Vector2(-half + corner_r, -half), Vector2(-half, -half + corner_r), PI, PI * 1.5],
+		[Vector2(half, -half), Vector2(half, -half + corner_r), Vector2(half - corner_r, -half), PI * 1.5, TAU],
+		[Vector2(half, half), Vector2(half - corner_r, half), Vector2(half, half - corner_r), 0.0, PI * 0.5],
+		[Vector2(-half, half), Vector2(-half, half - corner_r), Vector2(-half + corner_r, half), PI * 0.5, PI],
+	]
+	for c in corners:
+		var center_pt: Vector2 = Vector2(
+			c[0].x + (corner_r if c[0].x < 0 else -corner_r),
+			c[0].y + (corner_r if c[0].y < 0 else -corner_r))
+		for j in range(segments_per_corner + 1):
+			var t := float(j) / float(segments_per_corner)
+			var angle: float = lerpf(c[3], c[4], t)
+			var wobble: float = sin(angle * 5.0 + circle_rotation) * 0.6
+			var r: float = corner_r + wobble
+			points.append(center_pt + Vector2(cos(angle) * r, sin(angle) * r))
+
+	for i in range(points.size()):
+		var next := (i + 1) % points.size()
+		draw_line(points[i], points[next], col, 1.8, true)
 
 func _play_scribble() -> void:
 	# Quick scale bump feedback
