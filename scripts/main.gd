@@ -93,6 +93,9 @@ func _load_level(data: LevelData, level_index: int) -> void:
 func _on_tick() -> void:
 	game_board.on_tick()
 	spawn_manager.on_tick()
+	# Re-check: if the last number exited during on_tick but spawn_manager
+	# only finished on this same tick, the earlier check would have missed it.
+	game_board._check_level_complete()
 
 func _on_spawn_number(value: int) -> void:
 	game_board.spawn_number(value)
