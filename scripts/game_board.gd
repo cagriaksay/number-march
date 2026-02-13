@@ -625,25 +625,23 @@ func _draw_cells() -> void:
 func _draw_play_button(rect: Rect2, cx: int, cy: int) -> void:
 	var h := _cell_hash(cx, cy)
 	var center := rect.position + rect.size / 2.0
-	var radius := rect.size.x * 0.5
-	var col := Color(0.2, 0.5, 0.2, 0.5)
-	var outline_col := Color(0.15, 0.4, 0.15, 0.7)
+	var max_radius := rect.size.x * 0.4
+	var col := Color(0.2, 0.5, 0.2, 0.6)
 
-	# Draw wobbly filled circle
-	var segments := 24
-	var pts: PackedVector2Array = []
-	for i in segments:
-		var angle := float(i) / float(segments) * TAU
-		var wobble := (fmod(float(h + i * 3917), 5.0) - 2.5) * 0.8
-		var r := radius + wobble
-		pts.append(center + Vector2(cos(angle) * r, sin(angle) * r))
-	draw_colored_polygon(pts, col)
-
-	# Draw wobbly outline
-	for i in pts.size():
-		var from := pts[i]
-		var to := pts[(i + 1) % pts.size()]
-		draw_line(from, to, outline_col, 1.5)
+	# Hand-drawn spiral: ~3 turns, growing outward
+	var turns := 3.0
+	var segments := 60
+	var prev := center
+	for i in range(1, segments + 1):
+		var t := float(i) / float(segments)
+		var angle := t * turns * TAU
+		var r := t * max_radius
+		# Small wobble per point for hand-drawn feel
+		var wobble := (fmod(float(h + i * 3917), 5.0) - 2.5) * 0.1
+		r += wobble
+		var pt := center + Vector2(cos(angle) * r, sin(angle) * r)
+		draw_line(prev, pt, col, 1.5)
+		prev = pt
 
 func _draw_stop_square(rect: Rect2, cx: int, cy: int) -> void:
 	var h := _cell_hash(cx, cy)
@@ -680,28 +678,17 @@ func _cell_hash(cx: int, cy: int) -> int:
 	return absi(h)
 
 func _draw_wall_cell(rect: Rect2, cx: int, cy: int) -> void:
-	# Pencil graphite shading: multiple layers of angled strokes
-	# Inset so strokes don't touch the cell edges
-	var inset: float = 3.0
+	# Simple single-layer diagonal hatch
+	var inset: float = 1.0
 	var x0: float = rect.position.x + inset
 	var y0: float = rect.position.y + inset
 	var x1: float = rect.end.x - inset
 	var y1: float = rect.end.y - inset
 	var w: float = x1 - x0
 	var h: float = y1 - y0
-
 	var cell_seed: float = float(_cell_hash(cx, cy))
-	# 4 visually distinct stroke orientations per cell
-	var rot: int = ((cx * 3 + cy * 7 + cx * cy) % 4 + 4) % 4
-	# Base pattern directions, then rotate all by rot * 90°
-	var base_dirs: Array = [[1.0, 1.0], [0.6, 1.0], [-1.0, 1.0]]
-	var dirs: Array = _rotate_dirs(base_dirs, rot)
-	var col1: Color = Color(0.45, 0.42, 0.4, 0.35)
-	var col2: Color = Color(0.4, 0.38, 0.36, 0.25)
-	var col3: Color = Color(0.5, 0.47, 0.44, 0.15)
-	_draw_hatch_layer(x0, y0, x1, y1, w, h, 3.5, col1, dirs[0][0], dirs[0][1], cell_seed)
-	_draw_hatch_layer(x0, y0, x1, y1, w, h, 5.0, col2, dirs[1][0], dirs[1][1], cell_seed + 100.0)
-	_draw_hatch_layer(x0, y0, x1, y1, w, h, 6.0, col3, dirs[2][0], dirs[2][1], cell_seed + 200.0)
+	var col: Color = Color(0.45, 0.42, 0.4, 0.35)
+	_draw_hatch_layer(x0, y0, x1, y1, w, h, 3.5, col, 1.0, 1.0, cell_seed)
 
 func _draw_colored_shading(rect: Rect2, cx: int, cy: int, col_primary: Color, col_secondary: Color) -> void:
 	# Colored pencil shading (same technique as walls but with color)
@@ -784,12 +771,10 @@ func _draw_hatch_layer(x0: float, y0: float, x1: float, y1: float,
 	var n: int = int((max_d - min_d) / spacing) + 2
 	for i in range(n):
 		var d: float = min_d + i * spacing
-		# Per-stroke variation
+		# Slight wobble for hand-drawn feel, but uniform tone
 		var wobble: float = sin(d * 3.7 + seed_val) * 1.2
-		var alpha_var: float = 0.7 + 0.3 * sin(d * 2.1 + seed_val * 0.5)
 		var stroke_color: Color = color
-		stroke_color.a *= alpha_var
-		var thickness: float = 0.8 + 0.4 * sin(d * 5.3 + seed_val)
+		var thickness: float = 1.0
 
 		# Line start and end in local rect coords (offset by wobble along perp)
 		var base_x: float = perp_x * (d + wobble)
