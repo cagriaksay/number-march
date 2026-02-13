@@ -80,7 +80,7 @@ func _build_ui() -> void:
 	# Level number grid
 	var grid_width: float = COLS * CELL_SIZE
 	var grid_start_x: float = (VIEWPORT_W - grid_width) / 2.0
-	var grid_start_y: float = 160.0
+	var grid_start_y: float = 130.0
 
 	for i in TOTAL_LEVELS:
 		var col: int = i % COLS
@@ -152,6 +152,70 @@ func _build_ui() -> void:
 			stars_lbl.material = pencil_material
 		add_child(stars_lbl)
 		star_labels.append(stars_lbl)
+
+	# Game Center buttons at the bottom
+	_create_game_center_buttons(grid_start_y + ROWS * CELL_SIZE + 5)
+
+func _create_game_center_buttons(y_pos: float) -> void:
+	var btn_width: float = 140.0
+	var btn_height: float = 32.0
+	var spacing: float = 12.0
+	var total_width: float = btn_width * 2 + spacing
+	var start_x: float = (VIEWPORT_W - total_width) / 2.0
+
+	var lb_btn := Button.new()
+	lb_btn.text = "Leaderboards"
+	lb_btn.flat = true
+	lb_btn.size = Vector2(btn_width, btn_height)
+	lb_btn.position = Vector2(start_x, y_pos)
+	if caveat_bold:
+		lb_btn.add_theme_font_override("font", caveat_bold)
+	lb_btn.add_theme_font_size_override("font_size", 18)
+	lb_btn.add_theme_color_override("font_color", Color("#5577AA"))
+	lb_btn.add_theme_color_override("font_hover_color", Color("#3355AA"))
+	lb_btn.add_theme_color_override("font_pressed_color", Color("#2244AA"))
+	lb_btn.add_theme_color_override("font_focus_color", Color("#5577AA"))
+	lb_btn.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
+	lb_btn.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
+	lb_btn.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
+	lb_btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	if pencil_material:
+		lb_btn.material = pencil_material
+	lb_btn.pressed.connect(_on_leaderboards_pressed)
+	add_child(lb_btn)
+
+	var ach_btn := Button.new()
+	ach_btn.text = "Achievements"
+	ach_btn.flat = true
+	ach_btn.size = Vector2(btn_width, btn_height)
+	ach_btn.position = Vector2(start_x + btn_width + spacing, y_pos)
+	if caveat_bold:
+		ach_btn.add_theme_font_override("font", caveat_bold)
+	ach_btn.add_theme_font_size_override("font_size", 18)
+	ach_btn.add_theme_color_override("font_color", Color("#5577AA"))
+	ach_btn.add_theme_color_override("font_hover_color", Color("#3355AA"))
+	ach_btn.add_theme_color_override("font_pressed_color", Color("#2244AA"))
+	ach_btn.add_theme_color_override("font_focus_color", Color("#5577AA"))
+	ach_btn.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
+	ach_btn.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
+	ach_btn.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
+	ach_btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	if pencil_material:
+		ach_btn.material = pencil_material
+	ach_btn.pressed.connect(_on_achievements_pressed)
+	add_child(ach_btn)
+
+func _on_leaderboards_pressed() -> void:
+	if audio_manager_ref:
+		audio_manager_ref.play_button()
+	if GameCenterManager:
+		GameCenterManager.show_leaderboards()
+
+func _on_achievements_pressed() -> void:
+	if audio_manager_ref:
+		audio_manager_ref.play_button()
+	if GameCenterManager:
+		GameCenterManager.show_achievements()
 
 func update_stars(level_stars: Dictionary, level_scores: Dictionary = {}) -> void:
 	for i in TOTAL_LEVELS:

@@ -121,9 +121,9 @@ func _create_pause_button() -> void:
 	ff_button.text = ">"
 	ff_button.flat = true
 	ff_button.offset_left = 296.0
-	ff_button.offset_top = 10.0
+	ff_button.offset_top = 24.0
 	ff_button.offset_right = 336.0
-	ff_button.offset_bottom = 42.0
+	ff_button.offset_bottom = 56.0
 	if caveat_bold:
 		ff_button.add_theme_font_override("font", caveat_bold)
 	ff_button.add_theme_font_size_override("font_size", 20)
@@ -143,9 +143,9 @@ func _create_pause_button() -> void:
 	pause_button.text = "II"
 	pause_button.flat = true
 	pause_button.offset_left = 340.0
-	pause_button.offset_top = 10.0
+	pause_button.offset_top = 24.0
 	pause_button.offset_right = 380.0
-	pause_button.offset_bottom = 42.0
+	pause_button.offset_bottom = 56.0
 	if caveat_bold:
 		pause_button.add_theme_font_override("font", caveat_bold)
 	pause_button.add_theme_font_size_override("font_size", 20)

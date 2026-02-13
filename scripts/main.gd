@@ -70,6 +70,15 @@ func _ready() -> void:
 	# Load saved progress
 	_load_progress()
 
+	# Sync saved progress to Game Center once authenticated
+	if GameCenterManager:
+		if GameCenterManager.is_authenticated:
+			GameCenterManager.sync_all_scores(level_stars, level_scores)
+		elif GameCenterManager.game_center:
+			GameCenterManager.game_center.signin_success.connect(
+				func(_player): GameCenterManager.sync_all_scores(level_stars, level_scores)
+			)
+
 	# Start on level select
 	_show_level_select()
 
@@ -128,6 +137,18 @@ func _on_level_complete(stars: int) -> void:
 		if current_score > prev_score:
 			level_scores[current_level_index] = current_score
 		_save_progress()
+		# Post to Game Center
+		if GameCenterManager:
+			GameCenterManager.post_level_score(current_level_index, health_manager.current_hp)
+			GameCenterManager.award_level_complete(current_level_index)
+			# Check if all levels are complete
+			var all_complete := true
+			for i in TOTAL_LEVELS:
+				if not level_stars.has(i) or level_stars[i] <= 0:
+					all_complete = false
+					break
+			if all_complete:
+				GameCenterManager.award_all_levels_complete()
 	hud.show_game_over(stars, true)
 	audio_manager.stop_music(1.5)
 	audio_manager.play_level_complete()
