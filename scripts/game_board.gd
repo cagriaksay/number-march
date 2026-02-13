@@ -35,6 +35,7 @@ var edit_mode: bool = false
 var _edit_placing: String = ""  # "", "start", or "end"
 var _edit_dirty: bool = false  # true if grid changed since last save
 var _edit_saved_layout: PackedStringArray = []  # layout at last save
+var _pending_towers: Array = []  # [{cell: Vector2i, value: int}] for pre-placed towers
 
 # References (set by main)
 var health_manager: HealthManager
@@ -88,8 +89,25 @@ func load_level(data: LevelData) -> void:
 	_init_grid()
 	_parse_layout(data.grid_layout)
 	_setup_astar()
+	_spawn_pre_placed_towers()
 	_spawn_tutorial_hints(data.tutorial_hints)
 	queue_redraw()
+
+func _spawn_pre_placed_towers() -> void:
+	for entry in _pending_towers:
+		var cell: Vector2i = entry["cell"]
+		var val: int = entry["value"]
+		var tower_node = tower_scene.instantiate()
+		tower_node.grid_pos = cell
+		tower_node.position = grid_to_local(cell)
+		tower_node.cell_size = cell_size
+		tower_container.add_child(tower_node)
+		# Set value after _ready() has run, then refresh visual
+		tower_node.value = val
+		tower_node._update_visual()
+		tower_node.queue_redraw()
+		towers[cell] = tower_node
+	_pending_towers.clear()
 
 func _clear_board() -> void:
 	for child in tower_container.get_children():
@@ -117,6 +135,7 @@ func _init_grid() -> void:
 		grid.append(col)
 
 func _parse_layout(layout: PackedStringArray) -> void:
+	_pending_towers.clear()
 	for y in layout.size():
 		var row_str: String = layout[y]
 		for x in row_str.length():
@@ -135,7 +154,12 @@ func _parse_layout(layout: PackedStringArray) -> void:
 					grid[x][y] = CellType.END
 					end_cell = Vector2i(x, y)
 				_:
-					grid[x][y] = CellType.PATH
+					# Digits 1-9: pre-placed tower with that value
+					if ch >= "1" and ch <= "9":
+						grid[x][y] = CellType.TOWER
+						_pending_towers.append({"cell": Vector2i(x, y), "value": ch.to_int()})
+					else:
+						grid[x][y] = CellType.PATH
 
 # ─── Tutorial Hints ──────────────────────────────────────────────
 
@@ -506,7 +530,11 @@ func get_grid_layout() -> PackedStringArray:
 				CellType.END:
 					row += "E"
 				CellType.TOWER:
-					row += "."  # towers export as path
+					var cell := Vector2i(x, y)
+					if towers.has(cell) and towers[cell].value >= 1 and towers[cell].value <= 9:
+						row += str(towers[cell].value)
+					else:
+						row += "."
 				_:
 					row += "."
 		layout.append(row)
